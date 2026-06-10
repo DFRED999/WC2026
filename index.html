@@ -8,6 +8,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/firebase@9.23.0/firebase-app-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/firebase@9.23.0/firebase-database-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/firebase@9.23.0/firebase-auth-compat.js"></script>
 <script>
   const firebaseConfig = {
     apiKey: "AIzaSyCbPR1edez_NzWOVEV7ZMxtZKVe0ongEVo",
@@ -130,6 +131,7 @@ input:focus,select:focus{outline:none;border-color:var(--primary);box-shadow:0 0
 <div id="page-admin" class="page">
   <div id="admin-login" class="card" style="max-width:340px;margin:40px auto;text-align:center">
     <h2>🔐 כניסת מנהל</h2>
+    <input type="email" id="admin-email" placeholder="מייל" style="width:100%;margin:10px 0" onkeydown="if(event.key==='Enter')adminLogin()">
     <input type="password" id="admin-pw" placeholder="סיסמה" style="width:100%;margin:10px 0" onkeydown="if(event.key==='Enter')adminLogin()">
     <button class="btn btn-p" style="width:100%" onclick="adminLogin()">כניסה</button>
     <div id="admin-err" style="color:var(--red);font-size:.85em;margin-top:6px"></div>
@@ -281,7 +283,7 @@ input:focus,select:focus{outline:none;border-color:var(--primary);box-shadow:0 0
 // ============================================================
 // CONSTANTS
 // ============================================================
-const ADMIN_PW = "1111"; // סיסמה זמנית
+const ADMIN_PW = null; // סיסמה נשמרת ב-Firebase
 
 const MATCHES = [
   {id:1,  date:"11/06",time:"22:00",tA:"Mexico",      tB:"South Africa"},
@@ -1122,14 +1124,19 @@ function showMatchDetail(mid){
 // ============================================================
 let adminOn=false;
 function adminLogin(){
-  if(document.getElementById('admin-pw').value===ADMIN_PW){
-    adminOn=true;
-    document.getElementById('admin-panel').style.display='block';
-    document.getElementById('admin-login').style.display='none';
-    renderAdminRes();renderKOForm();renderPartsList();
-  } else {
-    document.getElementById('admin-err').textContent='סיסמה שגויה';
-  }
+  const email=document.getElementById('admin-email').value.trim();
+  const pw=document.getElementById('admin-pw').value;
+  if(!email||!pw){toast('⚠ הכנס מייל וסיסמה');return;}
+  firebase.auth().signInWithEmailAndPassword(email,pw)
+    .then(()=>{
+      adminOn=true;
+      document.getElementById('admin-panel').style.display='block';
+      document.getElementById('admin-login').style.display='none';
+      renderAdminRes();renderKOForm();renderPartsList();
+    })
+    .catch(()=>{
+      document.getElementById('admin-err').textContent='מייל או סיסמה שגויים';
+    });
 }
 
 function showAdminTab(tab){
