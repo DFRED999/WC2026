@@ -281,7 +281,7 @@ input:focus,select:focus{outline:none;border-color:var(--primary);box-shadow:0 0
 // ============================================================
 // CONSTANTS
 // ============================================================
-const ADMIN_PW = null; // סיסמה נשמרת ב-Firebase
+const ADMIN_PW = "1111"; // סיסמה זמנית
 
 const MATCHES = [
   {id:1,  date:"11/06",time:"22:00",tA:"Mexico",      tB:"South Africa"},
@@ -1122,20 +1122,14 @@ function showMatchDetail(mid){
 // ============================================================
 let adminOn=false;
 function adminLogin(){
-  const entered=document.getElementById('admin-pw').value;
-  if(!entered){toast('⚠ הכנס סיסמה');return;}
-  db.ref('adminPass').once('value').then(snap=>{
-    const pw=snap.val();
-    if(pw&&entered===pw){
-      adminOn=true;
-      document.getElementById('admin-panel').style.display='block';
-      document.getElementById('admin-login').style.display='none';
-      renderAdminRes();renderKOForm();renderPartsList();
-    } else {
-      toast('❌ סיסמה שגויה');
-      document.getElementById('admin-pw').value='';
-    }
-  }).catch(()=>{toast('❌ שגיאת חיבור');});
+  if(document.getElementById('admin-pw').value===ADMIN_PW){
+    adminOn=true;
+    document.getElementById('admin-panel').style.display='block';
+    document.getElementById('admin-login').style.display='none';
+    renderAdminRes();renderKOForm();renderPartsList();
+  } else {
+    document.getElementById('admin-err').textContent='סיסמה שגויה';
+  }
 }
 
 function showAdminTab(tab){
