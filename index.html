@@ -127,6 +127,47 @@ input:focus,select:focus{outline:none;border-color:var(--primary);box-shadow:0 0
   </div>
 </div>
 
+<!-- STATS -->
+<div id="page-stats" class="page" style="max-width:700px">
+  <div class="card">
+    <h2>📈 סטטיסטיקות חיות</h2>
+    <div id="stats-content"><p style="color:var(--muted)">טוען...</p></div>
+  </div>
+</div>
+
+<!-- WHATSAPP -->
+<div id="page-wa" class="page" style="max-width:600px">
+  <div class="card">
+    <h2>📱 הודעות לוואטסאפ</h2>
+    <p style="font-size:.85em;color:var(--muted);margin-bottom:16px">בחר סוג הודעה → לחץ הפק → העתק לוואטסאפ</p>
+
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
+      <button class="btn btn-p" onclick="waGenerate('champ')">🏆 ניחושי אלוף — לפני המונדיאל</button>
+      <button class="btn btn-p" onclick="waGenerate('similar')">👯 מי הכי דומה למי</button>
+      <button class="btn btn-p" onclick="waGenerate('contrarian')">🔥 ניחושים נגד הזרם</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn btn-p" style="flex:1" onclick="waGenerate('prematch')">⚽ לפני משחק</button>
+        <select id="wa-match-sel" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:.85em">
+          ${MATCHES.map(m=>`<option value="${m.id}">${m.id}. ${m.tB} — ${m.tA} (${m.date})</option>`).join('')}
+        </select>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn btn-p" style="flex:1" onclick="waGenerate('postmatch')">📊 אחרי משחק</button>
+        <select id="wa-match-sel2" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:.85em">
+          ${MATCHES.map(m=>`<option value="${m.id}">${m.id}. ${m.tB} — ${m.tA} (${m.date})</option>`).join('')}
+        </select>
+      </div>
+      <button class="btn btn-p" onclick="waGenerate('leaderboard')">🥇 טבלת מובילים עדכנית</button>
+    </div>
+
+    <div id="wa-output" style="display:none">
+      <div style="background:#e8f5e9;border-radius:10px;padding:14px;margin-bottom:10px;font-size:.9em;line-height:1.7;white-space:pre-wrap;direction:rtl;font-family:inherit" id="wa-text"></div>
+      <button class="btn btn-p" style="width:100%" onclick="waCopy()">📋 העתק הודעה</button>
+      <div id="wa-copied" style="text-align:center;color:var(--green);font-size:.85em;margin-top:6px;display:none">✅ הועתק!</div>
+    </div>
+  </div>
+</div>
+
 <!-- ADMIN -->
 <div id="page-admin" class="page">
   <div id="admin-login" class="card" style="max-width:340px;margin:40px auto;text-align:center">
@@ -142,6 +183,8 @@ input:focus,select:focus{outline:none;border-color:var(--primary);box-shadow:0 0
       <button class="itab" onclick="showAdminTab('ko')">🏆 נוקאאוט</button>
       <button class="itab" onclick="showAdminTab('parts')">👤 משתתפים</button>
       <button class="itab" onclick="showAdminTab('xl')">📊 ייבוא Excel</button>
+      <button class="itab" onclick="showAdminTab('wa')">📱 וואטסאפ</button>
+      <button class="itab" onclick="showAdminTab('stats')">📈 סטטיסטיקות</button>
       <button class="itab" onclick="showAdminTab('sync')">🔄 סנכרון</button>
     </div>
     <div id="atab-res">
@@ -210,7 +253,18 @@ input:focus,select:focus{outline:none;border-color:var(--primary);box-shadow:0 0
       </div>
     </div>
 
-    <!-- SYNC TAB -->
+    <div id="atab-wa" style="display:none">
+      <div class="card" style="max-width:600px">
+        <h2>📱 הודעות לוואטסאפ</h2>
+        <div id="wa-admin-content"></div>
+      </div>
+    </div>
+    <div id="atab-stats" style="display:none">
+      <div class="card" style="max-width:700px">
+        <h2>📈 סטטיסטיקות</h2>
+        <div id="stats-content"><p style="color:var(--muted)">טוען...</p></div>
+      </div>
+    </div>
     <div id="atab-sync" style="display:none">
       <div class="card">
         <h2>🔄 ייצוא / ייבוא נתונים</h2>
@@ -409,7 +463,7 @@ function teamsToGroups(teams){
 const BASE_PARTS = buildBaseParts();
 
 function buildBaseParts(){
-  const names=["דניס","בני","דניאל","גלעד","אלון","זיו","ברי","עמית","ליאור USA","ליאור ג'","שגיב ג'","קובי","אוראל ס'","נתנאל ס'","אורחן","ערן","אלעד","קיקו","לירן","ספי","חזי","רועי","נועם","עומר","מיקי","לביא","יהונתן"];
+  const names=["דניס","בני","דניאל","גלעד","אלון","זיו","ברי","עמית","ליאור USA","ליאור ג'","שגיב ג'","קובי","אוראל ס'","נתנאל ס'","אורחן","ערן","אלעד","קיקו","מיכה","ספי","שימי","רועי","נועם","עומר","מיקי","לביא","יהונתן","מיכאל"];
   const liorKO={
     r32:['Czech Rep.','Switzerland','Brazil','USA','Germany','Netherlands','Belgium','Spain','France','Argentina','Portugal','England',
          'Mexico','Qatar','Morocco','Turkey','Ivory Coast','Sweden','Egypt','Uruguay','Norway','Austria','Colombia','Croatia',
@@ -1140,11 +1194,13 @@ function adminLogin(){
 }
 
 function showAdminTab(tab){
-  ['res','ko','parts','xl','sync'].forEach(t=>{const el=document.getElementById(`atab-${t}`);if(el)el.style.display=t===tab?'block':'none';});
-  document.querySelectorAll('.itab').forEach((b,i)=>b.classList.toggle('active',['res','ko','parts','xl','sync'][i]===tab));
+  ['res','ko','parts','xl','wa','stats','sync'].forEach(t=>{const el=document.getElementById(`atab-${t}`);if(el)el.style.display=t===tab?'block':'none';});
+  document.querySelectorAll('.itab').forEach((b,i)=>b.classList.toggle('active',['res','ko','parts','xl','wa','stats','sync'][i]===tab));
   if(tab==='ko'){loadBonusToForm();renderKOForm();}
   if(tab==='parts') renderPartsList();
   if(tab==='xl') populateXlSelect();
+  if(tab==='wa') renderWAPage();
+  if(tab==='stats') renderStats();
   if(tab==='sync') populateExportSelect();
 }
 
@@ -1609,6 +1665,306 @@ function showPage(name){
   if(name==='compare'){renderCompare();renderKOCompare();}
   if(name==='matches') renderMatches();
   if(name==='lb') renderLeaderboard();
+}
+
+function renderWAPage(){
+  const div=document.getElementById('wa-admin-content');
+  if(!div) return;
+  div.innerHTML=`
+    <p style="font-size:.85em;color:var(--muted);margin-bottom:16px">בחר סוג הודעה → לחץ הפק → העתק לוואטסאפ</p>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
+      <button class="btn btn-p" onclick="waGenerate('champ')">🏆 ניחושי אלוף — לפני המונדיאל</button>
+      <button class="btn btn-p" onclick="waGenerate('similar')">👯 מי הכי דומה למי</button>
+      <button class="btn btn-p" onclick="waGenerate('contrarian')">🔥 ניחושים נגד הזרם</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn btn-p" style="flex:1" onclick="waGenerate('prematch')">⚽ לפני משחק</button>
+        <select id="wa-match-sel" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:.85em">
+          ${MATCHES.map(m=>`<option value="${m.id}">${m.id}. ${m.tB} — ${m.tA} (${m.date})</option>`).join('')}
+        </select>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn btn-p" style="flex:1" onclick="waGenerate('postmatch')">📊 אחרי משחק</button>
+        <select id="wa-match-sel2" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:.85em">
+          ${MATCHES.map(m=>`<option value="${m.id}">${m.id}. ${m.tB} — ${m.tA} (${m.date})</option>`).join('')}
+        </select>
+      </div>
+      <button class="btn btn-p" onclick="waGenerate('leaderboard')">🥇 טבלת מובילים עדכנית</button>
+    </div>
+    <div id="wa-output" style="display:none">
+      <div style="background:#e8f5e9;border-radius:10px;padding:14px;margin-bottom:10px;font-size:.9em;line-height:1.7;white-space:pre-wrap;direction:rtl;font-family:inherit" id="wa-text"></div>
+      <button class="btn btn-p" style="width:100%" onclick="waCopy()">📋 העתק הודעה</button>
+      <div id="wa-copied" style="text-align:center;color:var(--green);font-size:.85em;margin-top:6px;display:none">✅ הועתק!</div>
+    </div>`;
+}
+
+function waGenerate(type){
+  let text='';
+  const sorted=[...STATE.parts].sort((a,b)=>calcTotal(b).tot-calcTotal(a).tot);
+  const played=Object.keys(STATE.results||{}).length;
+
+  if(type==='champ'){
+    const champCount={};
+    STATE.parts.forEach(p=>{
+      const c=p.ko?.champ;
+      const team=Array.isArray(c)?c[0]:c;
+      if(team) champCount[team]=(champCount[team]||0)+1;
+    });
+    const champSorted=Object.entries(champCount).sort((a,b)=>b[1]-a[1]);
+    text=`🏆 *טוטו מונדיאל 2026 — ניחושי אלוף*\n`;
+    text+=`👥 ${STATE.parts.length} משתתפים\n\n`;
+    champSorted.forEach(([team,cnt])=>{
+      const names=STATE.parts.filter(p=>{const c=p.ko?.champ;const t=Array.isArray(c)?c[0]:c;return t===team;}).map(p=>p.name).join(', ');
+      const bar='⭐'.repeat(cnt);
+      text+=`${bar} *${team}* (${cnt})\n_${names}_\n\n`;
+    });
+    text+=`בהצלחה לכולם! 🔥⚽`;
+  }
+
+  else if(type==='similar'){
+    let pairs=[];
+    for(let i=0;i<STATE.parts.length;i++){
+      for(let j=i+1;j<STATE.parts.length;j++){
+        const p1=STATE.parts[i],p2=STATE.parts[j];
+        let same=0,tot=0;
+        for(let m=1;m<=25;m++){
+          const o1=p1.mp?.[m]?.o,o2=p2.mp?.[m]?.o;
+          if(o1&&o2){tot++;if(o1===o2)same++;}
+        }
+        if(tot>0) pairs.push({n1:p1.name,n2:p2.name,pct:Math.round(same/tot*100)});
+      }
+    }
+    pairs.sort((a,b)=>b.pct-a.pct);
+    text=`👯 *טוטו מונדיאל 2026 — מי ניחש כמו מי?*\n\n`;
+    text+=`🤝 *הכי דומים:*\n`;
+    pairs.slice(0,5).forEach(p=>text+=`• ${p.n1} & ${p.n2} — ${p.pct}% הסכמה\n`);
+    text+=`\n🆚 *הכי שונים:*\n`;
+    pairs.slice(-5).reverse().forEach(p=>text+=`• ${p.n1} & ${p.n2} — ${p.pct}% הסכמה\n`);
+    text+=`\n⚽ מונדיאל 2026 מתחיל בקרוב!`;
+  }
+
+  else if(type==='contrarian'){
+    const contrarian={};
+    MATCHES.forEach(m=>{
+      const votes={A:0,B:0,X:0};
+      STATE.parts.forEach(p=>{const o=p.mp?.[m.id]?.o;if(o)votes[o]++;});
+      const total=votes.A+votes.B+votes.X;
+      if(!total) return;
+      const majority=Object.entries(votes).sort((a,b)=>b[1]-a[1])[0][0];
+      if(votes[majority]/total<0.65) return;
+      const winner=majority==='A'?m.tA:majority==='B'?m.tB:'תיקו';
+      STATE.parts.forEach(p=>{
+        const o=p.mp?.[m.id]?.o;
+        if(o&&o!==majority){
+          const myWinner=o==='A'?m.tA:o==='B'?m.tB:'תיקו';
+          if(!contrarian[p.name]) contrarian[p.name]=[];
+          contrarian[p.name].push(`${myWinner} נגד ${winner}`);
+        }
+      });
+    });
+    const sorted2=Object.entries(contrarian).sort((a,b)=>b[1].length-a[1].length);
+    text=`🔥 *טוטו מונדיאל 2026 — המורדים*\n`;
+    text+=`_מי ניחש נגד הרוב?_\n\n`;
+    sorted2.forEach(([name,games])=>{
+      text+=`*${name}* (${games.length} ניחושים מיוחדים)\n`;
+      games.slice(0,3).forEach(g=>text+=`  • ${g}\n`);
+      text+='\n';
+    });
+    text+=`האם המורדים יוכיחו שצדקו? 👀`;
+  }
+
+  else if(type==='prematch'){
+    const mid=parseInt(document.getElementById('wa-match-sel').value);
+    const m=MATCHES.find(x=>x.id===mid);
+    if(!m) return;
+    let cA=0,cB=0,cX=0;
+    STATE.parts.forEach(p=>{
+      const o=p.mp?.[m.id]?.o;
+      if(o==='A')cA++;else if(o==='B')cB++;else if(o==='X')cX++;
+    });
+    const tot=cA+cB+cX||1;
+    const facts=MATCH_FACTS[mid]||[];
+    text=`⚽ *משחק ${mid}: ${m.tB} — ${m.tA}*\n`;
+    text+=`📅 ${m.date} | 🕐 ${m.time}\n\n`;
+    if(facts.length){
+      text+=`📖 *עובדות:*\n`;
+      facts.forEach(f=>text+=`• ${f}\n`);
+      text+='\n';
+    }
+    text+=`🗳️ *איך ניחשנו?*\n`;
+    text+=`• ${m.tA}: ${cA} (${Math.round(cA/tot*100)}%)\n`;
+    text+=`• תיקו: ${cX} (${Math.round(cX/tot*100)}%)\n`;
+    text+=`• ${m.tB}: ${cB} (${Math.round(cB/tot*100)}%)\n\n`;
+    text+=`🍿 בהצלחה לכולם!`;
+  }
+
+  else if(type==='postmatch'){
+    const mid=parseInt(document.getElementById('wa-match-sel2').value);
+    const m=MATCHES.find(x=>x.id===mid);
+    const res=STATE.results?.[mid];
+    if(!m||!res){text='⚠ אין תוצאה למשחק זה עדיין';document.getElementById('wa-text').textContent=text;document.getElementById('wa-output').style.display='block';return;}
+    const ro=res.gA>res.gB?'A':res.gA<res.gB?'B':'X';
+    const winner=ro==='A'?m.tA:ro==='B'?m.tB:'תיקו';
+    const scoreLine=`${res.gB}:${res.gA}`;
+    let exactNames=[],partNames=[],noNames=[];
+    STATE.parts.forEach(p=>{
+      const{pts,st}=calcMatchPts(p,mid);
+      if(st==='exact')exactNames.push(p.name);
+      else if(st==='part')partNames.push(p.name);
+      else if(st==='no')noNames.push(p.name);
+    });
+    text=`📊 *תוצאת משחק ${mid}: ${m.tB} — ${m.tA}*\n`;
+    text+=`🏆 *${scoreLine}* — ניצחון ${winner}\n\n`;
+    if(exactNames.length) text+=`✅ *תוצאה מדויקת (+2):* ${exactNames.join(', ')}\n`;
+    if(partNames.length) text+=`✔️ *כיוון נכון (+1):* ${partNames.join(', ')}\n`;
+    if(noNames.length) text+=`❌ *לא צדקו:* ${noNames.join(', ')}\n`;
+    text+=`\n🥇 *מוביל כרגע:* ${sorted[0]?.name} (${calcTotal(sorted[0]).tot} נק')`;
+  }
+
+  else if(type==='leaderboard'){
+    text=`🥇 *טוטו מונדיאל 2026 — טבלת מובילים*\n`;
+    text+=`📅 אחרי ${played}/${MATCHES.length} משחקים\n\n`;
+    sorted.forEach((p,i)=>{
+      const t=calcTotal(p);
+      const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}.`;
+      text+=`${medal} *${p.name}* — ${t.tot} נק' (⚽${t.mp} 🏆${t.kp})\n`;
+    });
+    text+=`\nטוטו מונדיאל 2026 🔥`;
+  }
+
+  document.getElementById('wa-text').textContent=text;
+  document.getElementById('wa-output').style.display='block';
+  document.getElementById('wa-copied').style.display='none';
+}
+
+function waCopy(){
+  const text=document.getElementById('wa-text').textContent;
+  navigator.clipboard.writeText(text).then(()=>{
+    const el=document.getElementById('wa-copied');
+    el.style.display='block';
+    setTimeout(()=>el.style.display='none',2500);
+  });
+}
+
+function renderStats(){
+  const div=document.getElementById('stats-content');
+  if(!div) return;
+  const played=Object.keys(STATE.results||{}).length;
+  const sorted=[...STATE.parts].sort((a,b)=>calcTotal(b).tot-calcTotal(a).tot);
+
+  // טבלת מובילים
+  let lbRows='';
+  sorted.slice(0,10).forEach((p,i)=>{
+    const t=calcTotal(p);
+    const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+    lbRows+=`<tr>
+      <td style="text-align:center;font-size:1.1em">${medal||i+1}</td>
+      <td style="font-weight:700"><span class="plink" onclick="showParticipant('${p.id}')">${p.name}</span></td>
+      <td style="text-align:center">${t.mp}</td>
+      <td style="text-align:center">${t.kp}</td>
+      <td style="text-align:center"><span class="pts-total">${t.tot}</span></td>
+    </tr>`;
+  });
+
+  // ניחוש אלוף
+  const champCount={};
+  STATE.parts.forEach(p=>{
+    const c=p.ko?.champ;
+    const team=Array.isArray(c)?c[0]:c;
+    if(team) champCount[team]=(champCount[team]||0)+1;
+  });
+  const champSorted=Object.entries(champCount).sort((a,b)=>b[1]-a[1]);
+  let champRows='';
+  champSorted.forEach(([team,cnt])=>{
+    champRows+=`<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border)">
+      <span style="flex:1;font-weight:600">${teamFlag(team,16)} ${team}</span>
+      <span style="font-size:.9em;color:var(--muted)">${cnt} ניחושים</span>
+    </div>`;
+  });
+
+  // % הצלחה לכל משחק שוחק
+  let matchRows='';
+  MATCHES.forEach(m=>{
+    const res=STATE.results?.[m.id];
+    if(!res) return;
+    const ro=res.gA>res.gB?'A':res.gA<res.gB?'B':'X';
+    let correct=0,total=0;
+    STATE.parts.forEach(p=>{
+      const pred=p.mp?.[m.id];
+      if(!pred) return;
+      total++;
+      if(pred.o===ro) correct++;
+    });
+    const pct=total?Math.round(correct/total*100):0;
+    const bar=`<div style="flex:1;height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${pct>=60?'#2E7D32':'#C62828'};border-radius:3px"></div></div>`;
+    matchRows+=`<div style="display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:.8em;color:var(--muted);min-width:20px">${m.id}</span>
+      <span style="font-size:.85em;flex:1">${m.tB} — ${m.tA}</span>
+      ${bar}
+      <span style="font-size:.85em;font-weight:700;min-width:32px;text-align:left">${pct}%</span>
+    </div>`;
+  });
+
+  // ניחושים נגד הזרם
+  const contrarian={};
+  MATCHES.forEach(m=>{
+    const votes={A:0,B:0,X:0};
+    STATE.parts.forEach(p=>{const o=p.mp?.[m.id]?.o;if(o)votes[o]++;});
+    const total=votes.A+votes.B+votes.X;
+    if(!total) return;
+    const majority=Object.entries(votes).sort((a,b)=>b[1]-a[1])[0][0];
+    if(votes[majority]/total<0.7) return;
+    STATE.parts.forEach(p=>{
+      const o=p.mp?.[m.id]?.o;
+      if(o&&o!==majority){contrarian[p.name]=(contrarian[p.name]||0)+1;}
+    });
+  });
+  const contrarianSorted=Object.entries(contrarian).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  let contrarianRows='';
+  contrarianSorted.forEach(([name,cnt])=>{
+    contrarianRows+=`<div style="display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid var(--border)">
+      <span style="flex:1;font-weight:600">${name}</span>
+      <span style="font-size:.85em;color:var(--muted)">${cnt} ניחושים נגד הזרם</span>
+    </div>`;
+  });
+
+  div.innerHTML=`
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
+      <div style="background:#EEF2FF;border-radius:8px;padding:10px;text-align:center">
+        <div style="font-size:1.6em;font-weight:700;color:var(--primary)">${played}</div>
+        <div style="font-size:.78em;color:var(--muted)">משחקים שוחקו</div>
+      </div>
+      <div style="background:#EEF2FF;border-radius:8px;padding:10px;text-align:center">
+        <div style="font-size:1.6em;font-weight:700;color:var(--primary)">${STATE.parts.length}</div>
+        <div style="font-size:.78em;color:var(--muted)">משתתפים</div>
+      </div>
+      <div style="background:#EEF2FF;border-radius:8px;padding:10px;text-align:center">
+        <div style="font-size:1.3em;font-weight:700;color:var(--primary)">${sorted[0]?.name||'—'}</div>
+        <div style="font-size:.78em;color:var(--muted)">מוביל כרגע</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+      <div>
+        <h3 style="font-size:.9em;color:var(--primary);border-bottom:2px solid var(--acc);padding-bottom:4px;margin-bottom:10px">🏆 טבלת מובילים</h3>
+        <table><thead><tr><th>#</th><th>שם</th><th>⚽</th><th>🏆</th><th>סה"כ</th></tr></thead>
+        <tbody>${lbRows}</tbody></table>
+      </div>
+      <div>
+        <h3 style="font-size:.9em;color:var(--primary);border-bottom:2px solid var(--acc);padding-bottom:4px;margin-bottom:10px">🥇 ניחוש אלוף</h3>
+        ${champRows||'<p style="color:var(--muted)">לא הוזן עדיין</p>'}
+      </div>
+    </div>
+
+    ${matchRows?`<div style="margin-bottom:14px">
+      <h3 style="font-size:.9em;color:var(--primary);border-bottom:2px solid var(--acc);padding-bottom:4px;margin-bottom:10px">✅ % ניחושים נכונים לכל משחק</h3>
+      ${matchRows}
+    </div>`:''}
+
+    ${contrarianRows?`<div>
+      <h3 style="font-size:.9em;color:var(--primary);border-bottom:2px solid var(--acc);padding-bottom:4px;margin-bottom:10px">🔥 ניחושים נגד הזרם</h3>
+      ${contrarianRows}
+    </div>`:''}
+  `;
 }
 
 function toast(msg){
