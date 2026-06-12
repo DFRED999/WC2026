@@ -551,13 +551,12 @@ function loadFromFirebase(){
         return f?{...p,...f}:p;
       });
     }
-    // שמור ל-localStorage גם
     localStorage.setItem('wc2026d',JSON.stringify({results:STATE.results,koRes:STATE.koRes}));
     localStorage.setItem('wc2026p',JSON.stringify(STATE.parts));
     renderAll();
   }).catch(e=>console.warn('Firebase load error:',e));
 
-  // האזן לעדכונים בזמן אמת
+  // האזן לעדכוני state בזמן אמת
   db.ref('state').on('value',snap=>{
     const data=snap.val();
     if(!data) return;
@@ -570,6 +569,17 @@ function loadFromFirebase(){
       });
     }
     renderAll();
+  });
+
+  // האזן לעובדות משחקים בזמן אמת
+  db.ref('matchFacts').on('value',snap=>{
+    const data=snap.val();
+    if(!data) return;
+    if(!STATE.matchFacts) STATE.matchFacts={};
+    Object.entries(data).forEach(([mid,facts])=>{
+      STATE.matchFacts[mid]=facts;
+    });
+    localStorage.setItem('wc2026mf',JSON.stringify(STATE.matchFacts));
   });
 }
 
@@ -1323,6 +1333,12 @@ function showMatchDetail(mid){
         const mf=JSON.parse(raw);
         mf[${mid}]=lines;
         localStorage.setItem('wc2026mf',JSON.stringify(mf));
+      }catch(e){}
+      // שמור ב-Firebase דרך הדף ההורה
+      try{
+        if(window.opener&&window.opener.db){
+          window.opener.db.ref('matchFacts/${mid}').set(lines);
+        }
       }catch(e){}
       // עדכן תצוגה
       document.getElementById('facts-view').innerHTML=lines.map(f=>\`<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid #EEF2FF"><span style="color:#FFD600">⚽</span><span style="font-size:.9em;color:#1A237E;line-height:1.5">\${f}</span></div>\`).join('');
