@@ -1248,6 +1248,16 @@ function showMatchDetail(mid){
 
   const html=`<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8">
   <title>משחק ${m.id} — ${m.tB} vs ${m.tA}</title>
+  <script src="https://cdn.jsdelivr.net/npm/firebase@9.23.0/firebase-app-compat.js"><\/script>
+  <script src="https://cdn.jsdelivr.net/npm/firebase@9.23.0/firebase-database-compat.js"><\/script>
+  <script>
+    firebase.initializeApp({
+      apiKey:"AIzaSyCbPR1edez_NzWOVEV7ZMxtZKVe0ongEVo",
+      databaseURL:"https://wc2026-4d6ef-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId:"wc2026-4d6ef"
+    });
+    const fbdb=firebase.database();
+  <\/script>
   <style>
     body{font-family:'Segoe UI',Arial,sans-serif;background:#F0F4FF;color:#1A237E;direction:rtl;margin:0 auto;padding:10px;max-width:600px}
     .header{background:linear-gradient(135deg,#0D47A1,#1976D2 60%,#B71C1C);color:#fff;padding:16px;border-radius:14px;text-align:center;margin-bottom:12px}
@@ -1311,6 +1321,7 @@ function showMatchDetail(mid){
       <p style="font-size:.8em;color:#718096;margin-bottom:6px">כתוב עובדה אחת בכל שורה:</p>
       <textarea id="facts-text">${facts.join('\n')}</textarea>
       <button class="save-btn" onclick="saveFacts()">💾 שמור</button>
+      <span id="save-status" style="font-size:.82em;color:#276749;margin-right:8px"></span>
     </div>
   </div>
   <div class="card">
@@ -1327,19 +1338,13 @@ function showMatchDetail(mid){
     }
     function saveFacts(){
       const lines=document.getElementById('facts-text').value.split('\\n').map(l=>l.trim()).filter(l=>l);
-      // שמור ב-localStorage של הדף ההורה
+      // שמור ב-Firebase ישירות
       try{
-        const raw=localStorage.getItem('wc2026mf')||'{}';
-        const mf=JSON.parse(raw);
-        mf[${mid}]=lines;
-        localStorage.setItem('wc2026mf',JSON.stringify(mf));
-      }catch(e){}
-      // שמור ב-Firebase דרך הדף ההורה
-      try{
-        if(window.opener&&window.opener.db){
-          window.opener.db.ref('matchFacts/${mid}').set(lines);
-        }
-      }catch(e){}
+        fbdb.ref('matchFacts/${mid}').set(lines).then(()=>{
+          document.getElementById('save-status').textContent='✅ נשמר!';
+          setTimeout(()=>document.getElementById('save-status').textContent='',2000);
+        });
+      }catch(e){console.warn('Firebase error:',e);}
       // עדכן תצוגה
       document.getElementById('facts-view').innerHTML=lines.map(f=>\`<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid #EEF2FF"><span style="color:#FFD600">⚽</span><span style="font-size:.9em;color:#1A237E;line-height:1.5">\${f}</span></div>\`).join('');
       toggleEdit();
