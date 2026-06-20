@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>טוטו מונדיאל 2026 🏆</title>
+<!-- patched: compare tab uses RTL score display; matches and participant cards use A:B -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/6.6.6/css/flag-icons.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/firebase@9.23.0/firebase-app-compat.js"></script>
@@ -169,7 +170,7 @@ input:focus,select:focus{outline:none;border-color:var(--primary);box-shadow:0 0
 <div id="page-lb" class="page active" style="max-width:600px">
   <div class="card">
     <h2>🏆 טבלת מובילים</h2>
-    <table><thead><tr><th>#</th><th>שם</th><th>⚽ משחקים</th><th>🏆 שלבים</th><th>🎯 בונוס</th><th>סה"כ</th><th>🔮 מקס'</th></tr></thead>
+    <table><thead><tr><th>#</th><th>שם</th><th>⚽ משחקים</th><th>🏆 שלבים</th><th>🎯 בונוס</th><th>סה"כ</th><th>🔮 נותר</th></tr></thead>
     <tbody id="lb-body"></tbody></table>
   </div>
 </div>
@@ -215,13 +216,13 @@ input:focus,select:focus{outline:none;border-color:var(--primary);box-shadow:0 0
       <div style="display:flex;gap:8px;align-items:center">
         <button class="btn btn-p" style="flex:1" onclick="waGenerate('prematch')">⚽ לפני משחק</button>
         <select id="wa-match-sel" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:.85em">
-          ${MATCHES.map(m=>`<option value="${m.id}">${m.id}. ${m.tB} — ${m.tA} (${m.date})</option>`).join('')}
+          ${MATCHES.map(m=>`<option value="${m.id}">${m.id}. ${m.tA} — ${m.tB} (${m.date})</option>`).join('')}
         </select>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
         <button class="btn btn-p" style="flex:1" onclick="waGenerate('postmatch')">📊 אחרי משחק</button>
         <select id="wa-match-sel2" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:.85em">
-          ${MATCHES.map(m=>`<option value="${m.id}">${m.id}. ${m.tB} — ${m.tA} (${m.date})</option>`).join('')}
+          ${MATCHES.map(m=>`<option value="${m.id}">${m.id}. ${m.tA} — ${m.tB} (${m.date})</option>`).join('')}
         </select>
       </div>
       <button class="btn btn-p" onclick="waGenerate('leaderboard')">🥇 טבלת מובילים עדכנית</button>
@@ -519,8 +520,14 @@ function teamFlag(name, size=20){
 }
 
 // תצוגת תוצאה: מחזיר gB:gA (כי RTL — B מוצג מימין)
-function dispScore(s){ if(!s||!s.includes(':')) return s||'—'; const[a,b]=s.split(':'); return `${b}:${a}`; }
-function dispRes(res){ if(!res) return '—'; return `${res.gB}:${res.gA}`; }
+function dispScore(s){ return s || '—'; }
+function dispRes(res){ if(!res) return '—'; return `${res.gA}:${res.gB}`; }
+// תצוגה רגילה לפי סדר המשחק: Team A : Team B — משמשת בכרטיס משתתף כדי שלא ייראה הפוך
+function dispScoreAB(s){ return s || '—'; }
+function dispResAB(res){ if(!res) return '—'; return `${res.gA}:${res.gB}`; }
+// לתצוגות RTL שבהן נבחרת A מופיעה מימין ונבחרת B משמאל (למשל לשונית השוואה)
+function dispScoreRTL(s){ if(!s||!s.includes(':')) return s || '—'; const [a,b]=s.split(':'); return `${b}:${a}`; }
+function dispResRTL(res){ if(!res) return '—'; return `${res.gB}:${res.gA}`; }
 
 
 const ALL_TEAMS = [...new Set(Object.values(GROUPS).flat())];
@@ -690,35 +697,39 @@ function calcTotal(p){
 
 
 function calcMaxPossible(p){
-  const current=calcTotal(p);
-  let max=current.tot;
+  let remaining = 0;
 
-  // משחקים: משחקים שעדיין לא הוזנה להם תוצאה יכולים עדיין לתת 2 נקודות
+  // משחקים: סופרים רק נקודות שעדיין אפשר להרוויח בעתיד
+  // כל משחק שעוד לא הוזנה לו תוצאה יכול לתת עד 2 נקודות.
   MATCHES.forEach(m=>{
-    const res=STATE.results?.[m.id];
-    const pred=p.mp?.[m.id];
-    if(pred && res==null) max+=2;
+    const res = STATE.results?.[m.id];
+    const pred = p.mp?.[m.id];
+    if(pred && res == null) remaining += 2;
   });
 
-  // שלבים: אם שלב עדיין לא נסגר במלואו, כל בחירה שעדיין לא נספרה יכולה עדיין להתממש
+  // שלבים: סופרים רק נקודות שעדיין לא נסגרו ויכולות להתממש בהמשך.
   KO_STAGES.forEach(stage=>{
-    const key=stage.key;
-    if(key==='endtype'){
-      const real=STATE.koRes?.[key]?.[0];
-      const pred=p.ko?.[key];
-      if(pred && !real) max += pred==='90' ? 1 : 2;
+    const key = stage.key;
+    if(key === 'endtype'){
+      const real = STATE.koRes?.[key]?.[0];
+      const pred = p.ko?.[key];
+      if(pred && !real) remaining += pred === '90' ? 1 : 2;
       return;
     }
-    const predArr=Array.isArray(p.ko?.[key]) ? p.ko[key] : [];
-    const realArr=Array.isArray(STATE.koRes?.[key]) ? STATE.koRes[key] : [];
-    const expected=stage.count || predArr.length;
-    if(realArr.length>=expected) return; // שלב סופי — אין עוד נקודות אפשריות מעבר למה שכבר נספר
-    const realSet=new Set(realArr);
-    const alreadyHit=predArr.filter(t=>realSet.has(t)).length;
-    max += Math.max(0, predArr.length-alreadyHit) * stage.pts;
+
+    const predArr = Array.isArray(p.ko?.[key]) ? p.ko[key] : [];
+    const realArr = Array.isArray(STATE.koRes?.[key]) ? STATE.koRes[key] : [];
+    const expected = stage.count || predArr.length;
+
+    // אם השלב כבר נסגר במלואו — אין בו יותר פוטנציאל עתידי.
+    if(realArr.length >= expected) return;
+
+    const realSet = new Set(realArr);
+    const alreadyHit = predArr.filter(t => realSet.has(t)).length;
+    remaining += Math.max(0, predArr.length - alreadyHit) * stage.pts;
   });
 
-  return max;
+  return remaining;
 }
 
 
@@ -996,11 +1007,11 @@ function renderMatches(){
         <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
           <div style="display:flex;align-items:center;gap:4px">
             <div style="width:36px;height:36px;border:2px solid #CBD5E0;border-radius:7px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:1.2em;font-weight:900;font-family:monospace;color:var(--primary)">
-              ${finished?gB:''}
+              ${finished?gA:''}
             </div>
             <span style="color:#CBD5E0;font-weight:700">:</span>
             <div style="width:36px;height:36px;border:2px solid #CBD5E0;border-radius:7px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:1.2em;font-weight:900;font-family:monospace;color:var(--primary)">
-              ${finished?gA:''}
+              ${finished?gB:''}
             </div>
           </div>
           <div style="font-size:.68em;color:#4A5568;font-weight:700;background:#EEF2FF;padding:2px 8px;border-radius:6px;margin-top:2px">#${m.id} · ${m.date} · ${m.time}</div>
@@ -1031,14 +1042,14 @@ function renderCompare(){
   tb.innerHTML='';
   MATCHES.forEach(m=>{
     const res=STATE.results?.[m.id];
-    const realDisp=res!=null?`<strong>${dispRes(res)}</strong>`:'<span style="color:var(--muted)">—</span>';
+    const realDisp=res!=null?`<strong>${dispResRTL(res)}</strong>`:'<span style="color:var(--muted)">—</span>'; // RTL: A מוצגת מימין, לכן הופכים תוצאה
     let row=`<td style="font-size:.82em"><div style="font-weight:700;font-size:.88em;display:flex;align-items:center;gap:4px;justify-content:flex-end"><span style="display:inline-flex;align-items:center;gap:3px">${teamFlag(m.tA,15)} ${m.tA}</span><span style="color:var(--muted)"> — </span><span style="display:inline-flex;align-items:center;gap:3px">${m.tB} ${teamFlag(m.tB,15)}</span></div><div style="color:#4A5568;font-size:.76em;text-align:left">${m.date} ${m.time} ${realDisp}</div></td>`;
     sorted.forEach(p=>{
       const pred=p.mp?.[m.id];
       const{pts,st}=calcMatchPts(p,m.id);
       if(!pred){row+=`<td style="color:var(--muted);text-align:center">—</td>`;return;}
       const[pa,pb]=(pred.s||':').split(':');
-      const sc=pred.s?dispScore(pred.s):'—';
+      const sc=pred.s?dispScoreRTL(pred.s):'—'; // RTL: A מוצגת מימין, לכן הופכים ניחוש
       const bg=st==='exact'?'#c6f6d5':st==='part'?'#fefcbf':st==='no'?'#fed7d7':'';
       const winner=pred.o==='A'?m.tA:pred.o==='B'?m.tB:'תיקו';
       const winnerShort=winner.length>9?winner.split(' ')[0]:winner;
@@ -1144,20 +1155,20 @@ function showParticipant(id){
     const pred=p.mp?.[m.id];
     const res=STATE.results?.[m.id];
     const{pts,st}=calcMatchPts(p,m.id);
-    const realD=res!=null?dispRes(res):'—';
-    const predD=pred?dispScore(pred.s):'—';
+    const realD=res!=null?dispResAB(res):'—';
+    const predD=pred?dispScoreAB(pred.s):'—';
     const bg=st==='exact'?'#c6f6d5':st==='part'?'#fefcbf':st==='no'?'#fed7d7':'';
     const ptsHtml=pts>0?`<span style="background:#1565C0;color:#FFD600;padding:1px 6px;border-radius:6px;font-size:.82em">+${pts}</span>`:'';
     const rowBg=st==='exact'?'#c6f6d5':st==='part'?'#fefcbf':st==='no'?'#fed7d7':m.id%2===0?'#F0F4FF':'#fff';
     mrows+=`<tr style="background:${rowBg}">
       <td style="text-align:center;color:#718096;font-size:.8em">${m.id}</td>
       <td style="font-size:.82em;color:#718096">${m.date}</td>
-      <td style="text-align:right"><span style="display:inline-flex;align-items:center;gap:4px;font-weight:600">${m.tB}${flagImg(m.tB)}</span></td>
+      <td style="text-align:right"><span style="display:inline-flex;align-items:center;gap:4px;font-weight:600">${m.tA}${flagImg(m.tA)}</span></td>
       <td style="text-align:center;background:${m.id%2===0?'#dde4f7':'#EEF2FF'}">
         <div style="font-family:monospace;font-weight:700;font-size:1em">${realD}</div>
         ${predD!=='—'?`<div style="font-family:monospace;font-size:.85em;color:#4A5568;margin-top:2px;border-top:1px dashed #C5CAE9;padding-top:2px">${predD} ${ptsHtml}</div>`:''}
       </td>
-      <td style="text-align:left"><span style="display:inline-flex;align-items:center;gap:4px;font-weight:600">${flagImg(m.tA)}${m.tA}</span></td>
+      <td style="text-align:left"><span style="display:inline-flex;align-items:center;gap:4px;font-weight:600">${flagImg(m.tB)}${m.tB}</span></td>
     </tr>`;
   });
 
@@ -1404,11 +1415,11 @@ function showParticipant(id){
         </div>
         <div style="display:flex;flex-direction:column;align-items:center;gap:1px">
           <div style="font-size:.6em;color:#4A5568;font-weight:700;background:#EEF2FF;padding:1px 6px;border-radius:4px;margin-bottom:2px">#${m.id} · ${m.date} · ${m.time}</div>
-          <!-- תוצאה -->
+          <!-- תוצאה אמיתית: בגלל RTL, הפריט הראשון מוצג בצד ימין. לכן gA קודם כדי שהקבוצה הימנית תקבל את השערים שלה -->
           <div style="display:flex;align-items:center;gap:3px">
-            <div style="${boxStyle}">${finished?gB:''}</div>
-            <span style="color:#CBD5E0;font-weight:700;font-size:.85em">:</span>
             <div style="${boxStyle}">${finished?gA:''}</div>
+            <span style="color:#CBD5E0;font-weight:700;font-size:.85em">:</span>
+            <div style="${boxStyle}">${finished?gB:''}</div>
           </div>
           ${pred?`<!-- ניחוש -->
           <div style="display:flex;align-items:center;gap:3px;margin-top:2px">
@@ -1559,7 +1570,7 @@ function showMatchDetail(mid){
   const flagUrl=(name)=>`https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/6.6.6/flags/4x3/${FLAG_CODES[name]||''}.svg`;
 
   const html=`<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8">
-  <title>משחק ${m.id} — ${m.tB} vs ${m.tA}</title>
+  <title>משחק ${m.id} — ${m.tA} vs ${m.tB}</title>
   <style>
     body{font-family:'Segoe UI',Arial,sans-serif;background:#F0F4FF;color:#1A237E;direction:rtl;margin:0 auto;padding:10px;max-width:600px}
     .header{background:linear-gradient(135deg,#0D47A1,#1976D2 60%,#B71C1C);color:#fff;padding:16px;border-radius:14px;text-align:center;margin-bottom:12px}
@@ -1589,7 +1600,7 @@ function showMatchDetail(mid){
   <div class="header">
     <div class="date">משחק ${m.id} &nbsp;·&nbsp; ${m.date} ${m.time}</div>
     <div class="teams">
-      ${m.tB} <img class="flag" src="${flagUrl(m.tB)}"> &nbsp;—&nbsp; <img class="flag" src="${flagUrl(m.tA)}"> ${m.tA}
+      ${m.tA} <img class="flag" src="${flagUrl(m.tA)}"> &nbsp;—&nbsp; <img class="flag" src="${flagUrl(m.tB)}"> ${m.tB}
     </div>
   </div>
   <div class="result-box">
@@ -1703,7 +1714,7 @@ function renderAdminRes(){
       <span style="font-weight:900;color:var(--muted)">:</span>
       <input type="number" id="gA${m.id}" value="${gA}" min="0" max="20" style="width:46px;text-align:center;font-weight:700;font-size:1.05em;border:2px solid var(--border);border-radius:6px;padding:4px">
       <span style="font-weight:600;white-space:nowrap">${m.tA} ${teamFlag(m.tA,16)}</span>
-    </div><div style="font-size:.7em;color:var(--muted);text-align:center">שמאל=${m.tB} | ימין=${m.tA}</div></td>
+    </div><div style="font-size:.7em;color:var(--muted);text-align:center">שמאל=${m.tA} | ימין=${m.tB}</div></td>
     <td><button class="btn btn-p btn-sm" onclick="saveRes(${m.id})">שמור</button>${res!=null?`<button class="btn btn-d btn-sm" style="margin-right:4px" onclick="delRes(${m.id})">מחק</button>`:''}</td>`;
     tb.appendChild(tr);
   });
@@ -2518,13 +2529,13 @@ function renderWAPage(){
       <div style="display:flex;gap:8px;align-items:center">
         <button class="btn btn-p" style="flex:1" onclick="waGenerate('prematch')">⚽ לפני משחק</button>
         <select id="wa-match-sel" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:.85em">
-          ${MATCHES.map(m=>`<option value="${m.id}">${m.id}. ${m.tB} — ${m.tA} (${m.date})</option>`).join('')}
+          ${MATCHES.map(m=>`<option value="${m.id}">${m.id}. ${m.tA} — ${m.tB} (${m.date})</option>`).join('')}
         </select>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
         <button class="btn btn-p" style="flex:1" onclick="waGenerate('postmatch')">📊 אחרי משחק</button>
         <select id="wa-match-sel2" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:.85em">
-          ${MATCHES.map(m=>`<option value="${m.id}">${m.id}. ${m.tB} — ${m.tA} (${m.date})</option>`).join('')}
+          ${MATCHES.map(m=>`<option value="${m.id}">${m.id}. ${m.tA} — ${m.tB} (${m.date})</option>`).join('')}
         </select>
       </div>
       <button class="btn btn-p" onclick="waGenerate('leaderboard')">🥇 טבלת מובילים עדכנית</button>
@@ -2622,7 +2633,7 @@ function waGenerate(type){
     });
     const tot=cA+cB+cX||1;
     const facts=MATCH_FACTS[mid]||[];
-    text=`⚽ *משחק ${mid}: ${m.tB} — ${m.tA}*\n`;
+    text=`⚽ *משחק ${mid}: ${m.tA} — ${m.tB}*\n`;
     text+=`📅 ${m.date} | 🕐 ${m.time}\n\n`;
     if(facts.length){
       text+=`📖 *עובדות:*\n`;
@@ -2651,7 +2662,7 @@ function waGenerate(type){
       else if(st==='part')partNames.push(p.name);
       else if(st==='no')noNames.push(p.name);
     });
-    text=`📊 *תוצאת משחק ${mid}: ${m.tB} — ${m.tA}*\n`;
+    text=`📊 *תוצאת משחק ${mid}: ${m.tA} — ${m.tB}*\n`;
     text+=`🏆 *${scoreLine}* — ניצחון ${winner}\n\n`;
     if(exactNames.length) text+=`✅ *תוצאה מדויקת (+2):* ${exactNames.join(', ')}\n`;
     if(partNames.length) text+=`✔️ *כיוון נכון (+1):* ${partNames.join(', ')}\n`;
@@ -2737,7 +2748,7 @@ function renderStats(){
     const bar=`<div style="flex:1;height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${pct>=60?'#2E7D32':'#C62828'};border-radius:3px"></div></div>`;
     matchRows+=`<div style="display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid var(--border)">
       <span style="font-size:.8em;color:var(--muted);min-width:20px">${m.id}</span>
-      <span style="font-size:.85em;flex:1">${m.tB} — ${m.tA}</span>
+      <span style="font-size:.85em;flex:1">${m.tA} — ${m.tB}</span>
       ${bar}
       <span style="font-size:.85em;font-weight:700;min-width:32px;text-align:left">${pct}%</span>
     </div>`;
@@ -3061,7 +3072,7 @@ function exportExcel(){
   MATCHES.forEach(m=>{
     const res=STATE.results?.[m.id];
     const realD=res?`${res.gB}:${res.gA}`:'—';
-    const row=[`${m.tB} — ${m.tA}`,m.date,realD];
+    const row=[`${m.tA} — ${m.tB}`,m.date,realD];
     sorted.forEach(p=>{
       const pred=p.mp?.[m.id];
       row.push(pred?dispScore(pred.s):'—');
@@ -3093,7 +3104,7 @@ function exportExcel(){
       const{pts}=calcMatchPts(p,m.id);
       rows.push([
         m.id,
-        `${m.tB} — ${m.tA}`,
+        `${m.tA} — ${m.tB}`,
         m.date,
         pred?dispScore(pred.s):'—',
         res?dispRes(res):'—',
@@ -3161,7 +3172,7 @@ function exportPDFCompare(){
 
   MATCHES.forEach(m=>{
     const res=STATE.results?.[m.id];
-    html+=`<tr><td class="match-td"><strong>${m.id}.</strong> ${m.tB} — ${m.tA}<br><span style="color:#718096">${m.date}</span></td>`;
+    html+=`<tr><td class="match-td"><strong>${m.id}.</strong> ${m.tA} — ${m.tB}<br><span style="color:#718096">${m.date}</span></td>`;
     html+=`<td style="font-weight:700;background:#EEF2FF">${res?dispRes(res):'—'}</td>`;
     sorted.forEach(p=>{
       const pred=p.mp?.[m.id];
@@ -3238,7 +3249,7 @@ function exportPDFParticipants(){
       const res=STATE.results?.[m.id];
       const{pts,st}=calcMatchPts(p,m.id);
       const cls=st==='exact'?'ok':st==='part'?'part':st==='no'?'no':'';
-      html+=`<tr class="${cls}"><td style="text-align:center;color:#6272A4">${m.id}</td><td>${m.tB} — ${m.tA}</td><td style="text-align:center">${m.date}</td><td style="text-align:center;font-weight:700">${pred?dispScore(pred.s):'—'}</td><td style="text-align:center">${res?dispRes(res):'—'}</td><td style="text-align:center">${pts>0?`<span class="pts-badge">+${pts}</span>`:''}</td></tr>`;
+      html+=`<tr class="${cls}"><td style="text-align:center;color:#6272A4">${m.id}</td><td>${m.tA} — ${m.tB}</td><td style="text-align:center">${m.date}</td><td style="text-align:center;font-weight:700">${pred?dispScore(pred.s):'—'}</td><td style="text-align:center">${res?dispRes(res):'—'}</td><td style="text-align:center">${pts>0?`<span class="pts-badge">+${pts}</span>`:''}</td></tr>`;
     });
     html+=`</tbody></table>`;
 
