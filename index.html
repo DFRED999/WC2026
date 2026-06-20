@@ -50,6 +50,7 @@ tr:last-child td{border-bottom:none}
 .plink{color:var(--primary);cursor:pointer;font-weight:700;text-decoration:underline dotted}
 .plink:hover{color:var(--sec)}
 .pts-total{background:var(--primary);color:var(--acc);padding:3px 10px;border-radius:12px;font-weight:700;font-size:.9em}
+.pts-max{background:#EDE7F6;color:#4527A0;padding:3px 10px;border-radius:12px;font-weight:700;font-size:.9em}
 .sc{display:inline-block;padding:2px 8px;border-radius:12px;font-weight:700;font-size:.88em;font-family:monospace}
 .sc-ok{background:#c6f6d5;color:#276749}
 .sc-part{background:#fefcbf;color:#744210}
@@ -104,7 +105,7 @@ input:focus,select:focus{outline:none;border-color:var(--primary);box-shadow:0 0
 <div id="page-lb" class="page active" style="max-width:600px">
   <div class="card">
     <h2>🏆 טבלת מובילים</h2>
-    <table><thead><tr><th>#</th><th>שם</th><th>⚽ משחקים</th><th>🏆 שלבים</th><th>🎯 בונוס</th><th>סה"כ</th></tr></thead>
+    <table><thead><tr><th>#</th><th>שם</th><th>⚽ משחקים</th><th>🏆 שלבים</th><th>🎯 בונוס</th><th>סה"כ</th><th>🔮 מקס'</th></tr></thead>
     <tbody id="lb-body"></tbody></table>
   </div>
 </div>
@@ -121,26 +122,10 @@ input:focus,select:focus{outline:none;border-color:var(--primary);box-shadow:0 0
 <div id="page-compare" class="page">
   <div class="card">
     <h2>📊 השוואת ניחושים — 25 משחקים + בונוס</h2>
-    <div style="background:#EEF2FF;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:.78em;color:#4A5568;display:flex;flex-wrap:wrap;gap:6px">
-      <span style="font-weight:700;color:var(--primary)">⚽ ניקוד משחקים:</span>
-      <span>✅ תוצאה מדויקת = <b>2 נק'</b></span>
-      <span>·</span>
-      <span>☑️ כיוון נכון = <b>1 נק'</b></span>
-    </div>
     <div style="overflow-x:auto"><table id="cmp-table"><thead id="cmp-thead"></thead><tbody id="cmp-tbody"></tbody></table></div>
   </div>
   <div class="card" style="margin-top:18px">
     <h2>🏆 השוואת עולות לשלבים</h2>
-    <div style="background:#EEF2FF;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:.78em;color:#4A5568;display:flex;flex-wrap:wrap;gap:6px">
-      <span style="font-weight:700;color:var(--primary)">🏆 ניקוד שלבי נוקאאוט:</span>
-      <span>שלב 32 = <b>1 נק'</b></span><span>·</span>
-      <span>1/8 = <b>2 נק'</b></span><span>·</span>
-      <span>רבע = <b>3 נק'</b></span><span>·</span>
-      <span>חצי = <b>3 נק'</b></span><span>·</span>
-      <span>גמר = <b>4 נק'</b></span><span>·</span>
-      <span>אלוף = <b>5 נק'</b></span><span>·</span>
-      <span>סיום גמר: הארכה/פנדלים = <b>2 נק'</b> | 90 דק' = <b>1 נק'</b></span>
-    </div>
     <div id="ko-cmp"></div>
   </div>
 </div>
@@ -417,12 +402,12 @@ const GROUPS = {
 };
 
 const KO_STAGES = [
-  {key:'r32',  label:'עולות לשלב 32 (מ-16 בתים) — כל נבחרת = 1 נק', count:32, pts:1},
-  {key:'r16',  label:'עולות ל-1/8 גמר — כל נבחרת = 2 נק',           count:16, pts:2},
-  {key:'qf',   label:'עולות ל-1/4 גמר — כל נבחרת = 3 נק',           count:8,  pts:3},
-  {key:'sf',   label:'עולות לחצי גמר — כל נבחרת = 3 נק',            count:4,  pts:3},
-  {key:'final',label:'עולות לגמר — כל נבחרת = 4 נק',                 count:2,  pts:4},
-  {key:'champ',label:'אלוף העולם — ניחוש נכון = 5 נק',               count:1,  pts:5},
+  {key:'r32',  label:'עולות לשלב 32 (מ-16 בתים)', count:32, pts:1},
+  {key:'r16',  label:'עולות ל-1/8 גמר',            count:16, pts:2},
+  {key:'qf',   label:'עולות ל-1/4 גמר',            count:8,  pts:3},
+  {key:'sf',   label:'עולות לחצי גמר',             count:4,  pts:3},
+  {key:'final',label:'עולות לגמר',                  count:2,  pts:4},
+  {key:'champ',label:'אלוף העולם',                  count:1,  pts:5},
   {key:'endtype',label:'סיום הגמר (90/הארכה/פנדלים)', count:1,pts:2},
 ];
 
@@ -551,12 +536,13 @@ function loadFromFirebase(){
         return f?{...p,...f}:p;
       });
     }
+    // שמור ל-localStorage גם
     localStorage.setItem('wc2026d',JSON.stringify({results:STATE.results,koRes:STATE.koRes}));
     localStorage.setItem('wc2026p',JSON.stringify(STATE.parts));
     renderAll();
   }).catch(e=>console.warn('Firebase load error:',e));
 
-  // האזן לעדכוני state בזמן אמת
+  // האזן לעדכונים בזמן אמת
   db.ref('state').on('value',snap=>{
     const data=snap.val();
     if(!data) return;
@@ -569,17 +555,6 @@ function loadFromFirebase(){
       });
     }
     renderAll();
-  });
-
-  // האזן לעובדות משחקים בזמן אמת
-  db.ref('matchFacts').on('value',snap=>{
-    const data=snap.val();
-    if(!data) return;
-    if(!STATE.matchFacts) STATE.matchFacts={};
-    Object.entries(data).forEach(([mid,facts])=>{
-      STATE.matchFacts[mid]=facts;
-    });
-    localStorage.setItem('wc2026mf',JSON.stringify(STATE.matchFacts));
   });
 }
 
@@ -622,6 +597,40 @@ function calcTotal(p){
   return{mp,kp,tot:mp+kp};
 }
 
+
+function calcMaxPossible(p){
+  const current=calcTotal(p);
+  let max=current.tot;
+
+  // משחקים: משחקים שעדיין לא הוזנה להם תוצאה יכולים עדיין לתת 2 נקודות
+  MATCHES.forEach(m=>{
+    const res=STATE.results?.[m.id];
+    const pred=p.mp?.[m.id];
+    if(pred && res==null) max+=2;
+  });
+
+  // שלבים: אם שלב עדיין לא נסגר במלואו, כל בחירה שעדיין לא נספרה יכולה עדיין להתממש
+  KO_STAGES.forEach(stage=>{
+    const key=stage.key;
+    if(key==='endtype'){
+      const real=STATE.koRes?.[key]?.[0];
+      const pred=p.ko?.[key];
+      if(pred && !real) max += pred==='90' ? 1 : 2;
+      return;
+    }
+    const predArr=Array.isArray(p.ko?.[key]) ? p.ko[key] : [];
+    const realArr=Array.isArray(STATE.koRes?.[key]) ? STATE.koRes[key] : [];
+    const expected=stage.count || predArr.length;
+    if(realArr.length>=expected) return; // שלב סופי — אין עוד נקודות אפשריות מעבר למה שכבר נספר
+    const realSet=new Set(realArr);
+    const alreadyHit=predArr.filter(t=>realSet.has(t)).length;
+    max += Math.max(0, predArr.length-alreadyHit) * stage.pts;
+  });
+
+  return max;
+}
+
+
 // ============================================================
 // RENDER LEADERBOARD
 // ============================================================
@@ -635,7 +644,7 @@ function renderLeaderboard(){
     const r=i+1,medal=r===1?'🥇':r===2?'🥈':r===3?'🥉':r;
     const tr=document.createElement('tr');
     tr.className=r<=3?`rank-${r}`:'';
-    tr.innerHTML=`<td style="text-align:center">${medal}</td><td><span class="plink" onclick="showParticipant('${p.id}')">${p.name}</span></td><td>${p.mp}</td><td>${p.kp}</td><td>0</td><td><span class="pts-total">${p.tot}</span></td>`;
+    tr.innerHTML=`<td style="text-align:center">${medal}</td><td><span class="plink" onclick="showParticipant('${p.id}')">${p.name}</span></td><td>${p.mp}</td><td>${p.kp}</td><td>0</td><td><span class="pts-total">${p.tot}</span></td><td><span class="pts-max">${calcMaxPossible(p)}</span></td>`;
     tb.appendChild(tr);
   });
 }
@@ -678,11 +687,11 @@ function renderMatches(){
         <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
           <div style="display:flex;align-items:center;gap:4px">
             <div style="width:36px;height:36px;border:2px solid #CBD5E0;border-radius:7px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:1.2em;font-weight:900;font-family:monospace;color:var(--primary)">
-              ${finished?gA:''}
+              ${finished?gB:''}
             </div>
             <span style="color:#CBD5E0;font-weight:700">:</span>
             <div style="width:36px;height:36px;border:2px solid #CBD5E0;border-radius:7px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:1.2em;font-weight:900;font-family:monospace;color:var(--primary)">
-              ${finished?gB:''}
+              ${finished?gA:''}
             </div>
           </div>
           <div style="font-size:.68em;color:#4A5568;font-weight:700;background:#EEF2FF;padding:2px 8px;border-radius:6px;margin-top:2px">#${m.id} · ${m.date} · ${m.time}</div>
@@ -730,7 +739,7 @@ function renderCompare(){
   });
   // Bonus rows
   const bsep=document.createElement('tr');
-  bsep.innerHTML=`<td colspan="${sorted.length+1}" style="background:var(--pd);color:var(--acc);font-weight:700;padding:6px 10px;font-size:.85em">🎯 שאלות בונוס — כל תשובה נכונה = 1 נק'</td>`;
+  bsep.innerHTML=`<td colspan="${sorted.length+1}" style="background:var(--pd);color:var(--acc);font-weight:700;padding:6px 10px;font-size:.85em">🎯 שאלות בונוס</td>`;
   tb.appendChild(bsep);
   [['b1','🥅 הכי שערים בבתים'],['b2','📉 מאזן גרוע'],['b3','🔢 מקסימום שערים'],['b4','0️⃣ משחקים 0:0']].forEach(([k,q])=>{
     let row=`<td style="font-size:.82em;font-weight:600">${q}</td>`;
@@ -758,8 +767,6 @@ function renderKOCompare(){
   const div=document.getElementById('ko-cmp');
   if(!div) return;
   const sorted=[...STATE.parts].sort((a,b)=>calcTotal(b).tot-calcTotal(a).tot);
-  const KO_PTS={r32:'1',r16:'2',qf:'3',sf:'3',final:'4',champ:'5'};
-  const KO_DESC2={r32:'כל נבחרת',r16:'כל נבחרת',qf:'כל נבחרת',sf:'כל נבחרת',final:'כל נבחרת',champ:'ניחוש נכון'};
   let html='';
   KO_STAGES.filter(s=>s.key!=='endtype').forEach(stage=>{
     const realArr=STATE.koRes?.[stage.key]||[];
@@ -803,10 +810,7 @@ function renderKOCompare(){
       });
       rows+=`<tr>${cells}</tr>`;
     }
-    const kpts=KO_PTS[stage.key]||stage.pts;
-    const kdesc2=KO_DESC2[stage.key]||'';
-    const headerRight=kdesc2+' = '+kpts+' \u05E0\u05E7\u0027'+(hasReal?' \u00B7 \u2713 \u05EA\u05D5\u05E6\u05D0\u05D5\u05EA \u05D9\u05D3\u05D5\u05E2\u05D5\u05EA':'');
-    html+=`<div style="margin-bottom:24px"><div style="background:linear-gradient(90deg,var(--pd),var(--primary));color:#fff;padding:9px 14px;border-radius:10px 10px 0 0;font-weight:700;font-size:.9em;display:flex;justify-content:space-between"><span>${stage.label}</span><span style="font-weight:normal;opacity:.85;font-size:.85em">${headerRight}</span></div><div class="ko-grid-wrap"><table class="ko-grid"><thead><tr>${hCols}</tr></thead><tbody>${rows}</tbody></table></div></div>`;
+    html+=`<div style="margin-bottom:24px"><div style="background:linear-gradient(90deg,var(--pd),var(--primary));color:#fff;padding:9px 14px;border-radius:10px 10px 0 0;font-weight:700;font-size:.9em;display:flex;justify-content:space-between"><span>${stage.label}</span><span style="font-weight:normal;opacity:.85;font-size:.85em">${stage.pts} נק' לניחוש${hasReal?' · תוצאות ידועות ✓':''}</span></div><div class="ko-grid-wrap"><table class="ko-grid"><thead><tr>${hCols}</tr></thead><tbody>${rows}</tbody></table></div></div>`;
   });
   div.innerHTML=html;
 }
@@ -1038,11 +1042,10 @@ function showParticipant(id){
       }
     }
 
-    const stageDescP={r16:"כל נבחרת = 2 נק'",qf:"כל נבחרת = 3 נק'",sf:"כל נבחרת = 3 נק'",final:"כל נבחרת = 4 נק'",champ:"ניחוש נכון = 5 נק'"};
     koHtml+=`<div style="margin-bottom:16px">
       <div style="background:linear-gradient(90deg,#0D47A1,#1565C0);color:#fff;padding:8px 14px;border-radius:8px 8px 0 0;display:flex;justify-content:space-between;align-items:center">
         <span style="font-weight:700;font-size:.9em">${stage.label}</span>
-        <span style="font-size:.78em;opacity:.85">${stageDescP[stage.key]||stage.pts+" נק'"}${real.length?` · +${pts} נק'`:''}</span>
+        <span style="font-size:.78em;opacity:.85">${stage.pts} נק' לניחוש${real.length?` · +${pts}`:''}</span>
       </div>
       <div style="border:1px solid #C5CAE9;border-top:none;border-radius:0 0 8px 8px;padding:10px">${stageContent}</div>
     </div>`;
@@ -1079,8 +1082,8 @@ function showParticipant(id){
     const gA=res!=null?res.gA:'';
     const gB=res!=null?res.gB:'';
     const finished=res!=null;
-    const predA=pred?pred.s.split(':')[0]:'';
-    const predB=pred?pred.s.split(':')[1]:'';
+    const predA=pred?pred.s.split(':')[1]:'';
+    const predB=pred?pred.s.split(':')[0]:'';
     const boxStyle=`width:36px;height:36px;border:2px solid #CBD5E0;border-radius:7px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:1.2em;font-weight:900;font-family:monospace;color:#1565C0`;
     const predBoxStyle=`width:36px;height:36px;border:2px solid ${st==='exact'?'#38a169':st==='part'?'#d69e2e':st==='no'?'#e53e3e':'#CBD5E0'};border-radius:7px;background:${st==='exact'?'#f0fff4':st==='part'?'#fffff0':st==='no'?'#fff5f5':'#F8F9FF'};display:flex;align-items:center;justify-content:center;font-size:1.2em;font-weight:900;font-family:monospace;color:#1565C0`;
     const ptsHtml=pts>0?`<div style="background:#1565C0;color:#FFD600;padding:1px 8px;border-radius:6px;font-size:.75em;font-weight:700;margin-top:3px">+${pts}</div>`:'';
@@ -1094,15 +1097,15 @@ function showParticipant(id){
           <div style="font-size:.6em;color:#4A5568;font-weight:700;background:#EEF2FF;padding:1px 6px;border-radius:4px;margin-bottom:2px">#${m.id} · ${m.date} · ${m.time}</div>
           <!-- תוצאה -->
           <div style="display:flex;align-items:center;gap:3px">
-            <div style="${boxStyle}">${finished?gA:''}</div>
-            <span style="color:#CBD5E0;font-weight:700;font-size:.85em">:</span>
             <div style="${boxStyle}">${finished?gB:''}</div>
+            <span style="color:#CBD5E0;font-weight:700;font-size:.85em">:</span>
+            <div style="${boxStyle}">${finished?gA:''}</div>
           </div>
           ${pred?`<!-- ניחוש -->
           <div style="display:flex;align-items:center;gap:3px;margin-top:2px">
-            <div style="${predBoxStyle}">${predA}</div>
-            <span style="color:#CBD5E0;font-weight:700;font-size:.85em">:</span>
             <div style="${predBoxStyle}">${predB}</div>
+            <span style="color:#CBD5E0;font-weight:700;font-size:.85em">:</span>
+            <div style="${predBoxStyle}">${predA}</div>
           </div>
           ${ptsHtml}`:''}
         </div>
@@ -1248,16 +1251,6 @@ function showMatchDetail(mid){
 
   const html=`<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8">
   <title>משחק ${m.id} — ${m.tB} vs ${m.tA}</title>
-  <script src="https://cdn.jsdelivr.net/npm/firebase@9.23.0/firebase-app-compat.js"><\/script>
-  <script src="https://cdn.jsdelivr.net/npm/firebase@9.23.0/firebase-database-compat.js"><\/script>
-  <script>
-    firebase.initializeApp({
-      apiKey:"AIzaSyCbPR1edez_NzWOVEV7ZMxtZKVe0ongEVo",
-      databaseURL:"https://wc2026-4d6ef-default-rtdb.europe-west1.firebasedatabase.app",
-      projectId:"wc2026-4d6ef"
-    });
-    const fbdb=firebase.database();
-  <\/script>
   <style>
     body{font-family:'Segoe UI',Arial,sans-serif;background:#F0F4FF;color:#1A237E;direction:rtl;margin:0 auto;padding:10px;max-width:600px}
     .header{background:linear-gradient(135deg,#0D47A1,#1976D2 60%,#B71C1C);color:#fff;padding:16px;border-radius:14px;text-align:center;margin-bottom:12px}
@@ -1292,7 +1285,7 @@ function showMatchDetail(mid){
   </div>
   <div class="result-box">
     <div class="result-lbl">תוצאה סופית</div>
-    <div class="result-score" style="direction:ltr">${res!=null?`${res.gA}:${res.gB}`:'טרם שוחק'}</div>
+    <div class="result-score">${realD}</div>
   </div>
   <div class="stat-row">
     <div class="stat-box">
@@ -1321,7 +1314,6 @@ function showMatchDetail(mid){
       <p style="font-size:.8em;color:#718096;margin-bottom:6px">כתוב עובדה אחת בכל שורה:</p>
       <textarea id="facts-text">${facts.join('\n')}</textarea>
       <button class="save-btn" onclick="saveFacts()">💾 שמור</button>
-      <span id="save-status" style="font-size:.82em;color:#276749;margin-right:8px"></span>
     </div>
   </div>
   <div class="card">
@@ -1338,13 +1330,13 @@ function showMatchDetail(mid){
     }
     function saveFacts(){
       const lines=document.getElementById('facts-text').value.split('\\n').map(l=>l.trim()).filter(l=>l);
-      // שמור ב-Firebase ישירות
+      // שמור ב-localStorage של הדף ההורה
       try{
-        fbdb.ref('matchFacts/${mid}').set(lines).then(()=>{
-          document.getElementById('save-status').textContent='✅ נשמר!';
-          setTimeout(()=>document.getElementById('save-status').textContent='',2000);
-        });
-      }catch(e){console.warn('Firebase error:',e);}
+        const raw=localStorage.getItem('wc2026mf')||'{}';
+        const mf=JSON.parse(raw);
+        mf[${mid}]=lines;
+        localStorage.setItem('wc2026mf',JSON.stringify(mf));
+      }catch(e){}
       // עדכן תצוגה
       document.getElementById('facts-view').innerHTML=lines.map(f=>\`<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid #EEF2FF"><span style="color:#FFD600">⚽</span><span style="font-size:.9em;color:#1A237E;line-height:1.5">\${f}</span></div>\`).join('');
       toggleEdit();
@@ -1857,78 +1849,37 @@ function renderInfo(){
   const div=document.getElementById('info-content');
   if(!div||div.innerHTML) return;
 
-  // ניחושי הקבוצה לפי מספר משחק
-  const OUR_MATCHES=new Set([1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25]);
-  const getPredBar=(mid)=>{
-    let cA=0,cB=0,cX=0;
-    STATE.parts.forEach(p=>{const o=p.mp?.[mid]?.o;if(o==='A')cA++;else if(o==='B')cB++;else if(o==='X')cX++;});
-    const tot=cA+cB+cX||1;
-    const m=MATCHES.find(x=>x.id===mid);
-    if(!m) return '';
-    const res=STATE.results?.[mid];
-    const resHtml=res!=null?`<span style="font-family:monospace;font-weight:700;font-size:.85em;background:#EEF2FF;padding:1px 6px;border-radius:4px">${res.gB}:${res.gA}</span>`:'';
-    return `<div style="margin-top:6px;border-top:1px dashed #e2e8f0;padding-top:6px">
-      <div style="display:flex;align-items:center;gap:4px;font-size:.72em;margin-bottom:3px">
-        <span style="color:#1565C0;font-weight:600">ניחושי הקבוצה שלנו:</span>
-        ${resHtml}
-      </div>
-      <div style="display:flex;align-items:center;gap:4px;font-size:.74em">
-        <span style="min-width:70px;text-align:right;color:#1565C0;font-weight:600">${m.tA} ${cA}</span>
-        <div style="flex:1;height:7px;background:#e2e8f0;border-radius:4px;overflow:hidden;display:flex">
-          <div style="width:${Math.round(cA/tot*100)}%;background:#1565C0;height:100%"></div>
-          <div style="width:${Math.round(cX/tot*100)}%;background:#F57F17;height:100%"></div>
-          <div style="width:${Math.round(cB/tot*100)}%;background:#B71C1C;height:100%"></div>
-        </div>
-        <span style="min-width:70px;color:#B71C1C;font-weight:600">${cB} ${m.tB}</span>
-      </div>
-      <div style="text-align:center;font-size:.68em;color:#718096">תיקו: ${cX}</div>
-    </div>`;
+  const MATCH_INFO={
+    1: {city:'Mexico City',stadium:'Estadio Azteca',cap:'83,000',temp:'18°C',fact:'משחק הפתיחה! הנבחרת המארחת'},
+    2: {city:'Toronto',stadium:'BMO Field',cap:'45,000',temp:'22°C',fact:'קנדה פותחת ביתה לראשונה'},
+    3: {city:'Los Angeles',stadium:'SoFi Stadium',cap:'70,000',temp:'26°C',fact:'ארה"ב מארחת — הקהל ענק'},
+    4: {city:'Los Angeles',stadium:'SoFi Stadium',cap:'70,000',temp:'26°C',fact:'ברזיל מול מרוקו — הפגישה הראשונה במונדיאל'},
+    5: {city:'Dallas',stadium:'AT&T Stadium',cap:'94,000',temp:'34°C',fact:'האצטדיון הגדול ביותר בטורניר! 94,000 איש'},
+    6: {city:'Kansas City',stadium:'GEHA Field at Arrowhead',cap:'73,000',temp:'28°C',fact:'ספרד הפייבוריטית מול קייפ ורד בדביוט'},
+    7: {city:'Philadelphia',stadium:'Lincoln Financial Field',cap:'69,000',temp:'26°C',fact:'צרפת × סנגל — מפגש אפריקאי-אירופאי'},
+    8: {city:'Dallas',stadium:'AT&T Stadium',cap:'94,000',temp:'34°C',fact:'ארגנטינה-אלג\'יריה — ראשון מאז 1982'},
+    9: {city:'Houston',stadium:'NRG Stadium',cap:'72,000',temp:'33°C',fact:'פורטוגל-קונגו — רונאלדו מול אפריקה'},
+    10:{city:'Dallas',stadium:'AT&T Stadium',cap:'94,000',temp:'34°C',fact:'ריפליי של חצי גמר 2018! קרואטיה ניצחה אז'},
+    11:{city:'Los Angeles',stadium:'SoFi Stadium',cap:'70,000',temp:'27°C',fact:'שווייץ ניצחה צרפת, ספרד ואיטליה בנוקאאוט'},
+    12:{city:'Seattle',stadium:'Lumen Field',cap:'69,000',temp:'20°C',fact:'ארה"ב-אוסטרליה — "הסוקרוס" הפתיעו ב-2022'},
+    13:{city:'Houston',stadium:'NRG Stadium',cap:'72,000',temp:'33°C',fact:'סקוטלנד חוזרת למונדיאל אחרי 28 שנה!'},
+    14:{city:'Dallas',stadium:'AT&T Stadium',cap:'94,000',temp:'34°C',fact:'הולנד עם ואן דייק מול שוודיה'},
+    15:{city:'Philadelphia',stadium:'Lincoln Financial Field',cap:'69,000',temp:'27°C',fact:'גרמניה חוף השנהב — 4 אליפויות נגד גביע אפריקה'},
+    16:{city:'Los Angeles',stadium:'SoFi Stadium',cap:'70,000',temp:'27°C',fact:'בלגיה הדור הזהב — המשחק האחרון שלהם?'},
+    17:{city:'Dallas',stadium:'AT&T Stadium',cap:'94,000',temp:'34°C',fact:'ארגנטינה מגנת האליפות מול אוסטריה'},
+    18:{city:'Atlanta',stadium:'Mercedes-Benz Stadium',cap:'75,000',temp:'30°C',fact:'אנגליה-גאנה — גאנה ניצחה 2:1 ב-2010'},
+    19:{city:'Guadalajara',stadium:'Estadio Akron',cap:'49,000',temp:'22°C',fact:'קולומביה-קונגו — 2 נבחרות חזקות מאוד'},
+    20:{city:'Boston',stadium:'Gillette Stadium',cap:'65,000',temp:'23°C',fact:'ברזיל-סקוטלנד — לראשונה אי פעם!'},
+    21:{city:'Philadelphia',stadium:'Lincoln Financial Field',cap:'69,000',temp:'28°C',fact:'קוראסאו — 150,000 תושבים! הנבחרת הקטנה ביותר'},
+    22:{city:'Philadelphia',stadium:'Lincoln Financial Field',cap:'69,000',temp:'28°C',fact:'הלאנד מול מבאפה — הגדולים של הדור'},
+    23:{city:'Guadalajara',stadium:'Estadio Akron',cap:'49,000',temp:'22°C',fact:'ספרד-אורוגוואי — 2 כוחות שונים לחלוטין'},
+    24:{city:'Atlanta',stadium:'Mercedes-Benz Stadium',cap:'75,000',temp:'31°C',fact:'אנגליה-פנמה — אנגליה ניצחה 6:1 ב-2018'},
+    25:{city:'Dallas',stadium:'AT&T Stadium',cap:'94,000',temp:'35°C',fact:'ארגנטינה-ירדן — ירדן לראשונה במונדיאל!'},
   };
-
-  // כל 104 המשחקים
-  const ALL_MATCHES=[
-    {mid:1,  date:'11/06',time:'22:00',tA:'Mexico',       tB:'South Africa', city:'Mexico City',   stadium:'Estadio Azteca',          cap:'83,000', temp:'18C', fact:'משחק הפתיחה! מארחת מול דרום אפריקה'},
-    {mid:2,  date:'12/06',time:'22:00',tA:'Canada',        tB:'Bosnia',       city:'Toronto',       stadium:'BMO Field',               cap:'45,000', temp:'22C', fact:'קנדה פותחת ביתה לראשונה במונדיאל'},
-    {mid:3,  date:'13/06',time:'04:00',tA:'Paraguay',      tB:'USA',          city:'Los Angeles',   stadium:'SoFi Stadium',            cap:'70,000', temp:'26C', fact:'ארהב מארחת - הקהל ענק'},
-    {mid:4,  date:'13/06',time:'23:00',tA:'Brazil',        tB:'Morocco',      city:'New York',      stadium:'MetLife Stadium',         cap:'82,500', temp:'24C', fact:'ברזיל מול מרוקו - פגישה ראשונה במונדיאל'},
-    {mid:5,  date:'14/06',time:'23:00',tA:'Netherlands',   tB:'Japan',        city:'Dallas',        stadium:'AT&T Stadium',            cap:'94,000', temp:'34C', fact:'האצטדיון הגדול ביותר! 94,000 איש'},
-    {mid:6,  date:'15/06',time:'19:00',tA:'Spain',         tB:'Cape Verde',   city:'Kansas City',   stadium:'GEHA Field Arrowhead',    cap:'73,000', temp:'28C', fact:'ספרד הפייבוריטית מול קייפ ורד בדביוט'},
-    {mid:7,  date:'16/06',time:'22:00',tA:'France',        tB:'Senegal',      city:'New York',      stadium:'MetLife Stadium',         cap:'82,500', temp:'25C', fact:'מבאפה מול מאנה - עמיתים לשעבר ב-PSG'},
-    {mid:8,  date:'17/06',time:'04:00',tA:'Argentina',     tB:'Algeria',      city:'Dallas',        stadium:'AT&T Stadium',            cap:'94,000', temp:'34C', fact:'ארגנטינה-אלגʼיריה - ראשון מאז 1982'},
-    {mid:9,  date:'17/06',time:'20:00',tA:'Portugal',      tB:'DR Congo',     city:'Houston',       stadium:'NRG Stadium',             cap:'72,000', temp:'33C', fact:'פורטוגל-קונגו - רונאלדו מול אפריקה'},
-    {mid:10, date:'17/06',time:'23:00',tA:'England',       tB:'Croatia',      city:'Dallas',        stadium:'AT&T Stadium',            cap:'94,000', temp:'34C', fact:'ריפליי חצי גמר 2018! קרואטיה ניצחה אז'},
-    {mid:null,date:'13/06',time:'01:00',tA:'Qatar',        tB:'Switzerland',  city:'San Francisco', stadium:'Levis Stadium',           cap:'68,000', temp:'18C', fact:'מארחת קטאר 2022 מול שווייץ'},
-    {mid:null,date:'13/06',time:'04:00',tA:'Haiti',        tB:'Scotland',     city:'Boston',        stadium:'Gillette Stadium',        cap:'65,000', temp:'22C', fact:'סקוטלנד חוזרת למונדיאל אחרי 28 שנה!'},
-    {mid:null,date:'13/06',time:'07:00',tA:'Australia',    tB:'Turkey',       city:'Vancouver',     stadium:'BC Place',                cap:'54,000', temp:'18C', fact:'טורקיה מול אוסטרליה ב-BC Place'},
-    {mid:null,date:'14/06',time:'19:00',tA:'Germany',      tB:'Curaçao',      city:'Houston',       stadium:'NRG Stadium',             cap:'72,000', temp:'33C', fact:'גרמניה פותחת מול הנבחרת הקטנה ביותר'},
-    {mid:null,date:'14/06',time:'22:00',tA:'Ivory Coast',  tB:'Ecuador',      city:'Philadelphia',  stadium:'Lincoln Financial Field', cap:'69,000', temp:'26C', fact:'קבוצה E - שני כוחות מאתגרים'},
-    {mid:null,date:'14/06',time:'04:00',tA:'Uzbekistan',   tB:'Tunisia',      city:'Monterrey',     stadium:'Estadio BBVA',            cap:'51,000', temp:'30C', fact:'שני דביוטים ממונדיאל'},
-    {mid:15, date:'14/06',time:'22:00',tA:'Germany',       tB:'Ivory Coast',  city:'Philadelphia',  stadium:'Lincoln Financial Field', cap:'69,000', temp:'26C', fact:'גרמניה 4 אליפויות נגד גביע אפריקה'},
-    {mid:null,date:'15/06',time:'01:00',tA:'Spain',        tB:'Tunisia',      city:'Monterrey',     stadium:'Estadio BBVA',            cap:'51,000', temp:'28C', fact:'ספרד פותחת מול תוניסיה'},
-    {mid:null,date:'15/06',time:'01:00',tA:'Iraq',         tB:'Norway',       city:'Boston',        stadium:'Gillette Stadium',        cap:'65,000', temp:'22C', fact:'הלאנד מול עיראק בדביוט'},
-    {mid:null,date:'15/06',time:'22:00',tA:'Saudi Arabia', tB:'Egypt',        city:'Atlanta',       stadium:'Mercedes-Benz Stadium',   cap:'75,000', temp:'30C', fact:'מוחמד סלאח מול ערב הסעודית'},
-    {mid:null,date:'15/06',time:'22:00',tA:'New Zealand',  tB:'Iran',         city:'Dallas',        stadium:'AT&T Stadium',            cap:'94,000', temp:'34C', fact:'ניו זילנד ואיראן בבית G'},
-    {mid:null,date:'16/06',time:'01:00',tA:'Jordan',       tB:'Austria',      city:'San Francisco', stadium:'Levis Stadium',           cap:'68,000', temp:'19C', fact:'ירדן בדביוטה מול אוסטריה'},
-    {mid:null,date:'16/06',time:'01:00',tA:'Algeria',      tB:'Austria',      city:'Kansas City',   stadium:'GEHA Field Arrowhead',    cap:'73,000', temp:'27C', fact:'בית J - אלגʼיריה מול אוסטריה'},
-    {mid:16, date:'21/06',time:'22:00',tA:'Belgium',       tB:'Iran',         city:'Los Angeles',   stadium:'SoFi Stadium',            cap:'70,000', temp:'27C', fact:'בלגיה הדור הזהב - המשחק האחרון?'},
-    {mid:11, date:'18/06',time:'22:00',tA:'Switzerland',   tB:'Bosnia',       city:'Los Angeles',   stadium:'SoFi Stadium',            cap:'70,000', temp:'27C', fact:'שווייץ ניצחה צרפת ספרד ואיטליה לאחרונה'},
-    {mid:12, date:'19/06',time:'22:00',tA:'USA',           tB:'Australia',    city:'Seattle',       stadium:'Lumen Field',             cap:'69,000', temp:'20C', fact:'ארהב-אוסטרליה - הסוקרוס הפתיעו ב-2022'},
-    {mid:13, date:'20/06',time:'01:00',tA:'Scotland',      tB:'Morocco',      city:'Houston',       stadium:'NRG Stadium',             cap:'72,000', temp:'33C', fact:'סקוטלנד ומרוקו - מי יכריע?'},
-    {mid:14, date:'20/06',time:'22:00',tA:'Netherlands',   tB:'Sweden',       city:'Dallas',        stadium:'AT&T Stadium',            cap:'94,000', temp:'34C', fact:'הולנד-שוודיה - שכנות סקנדינביה'},
-    {mid:17, date:'22/06',time:'20:00',tA:'Argentina',     tB:'Austria',      city:'Dallas',        stadium:'AT&T Stadium',            cap:'94,000', temp:'35C', fact:'ארגנטינה מגנת האליפות מול אוסטריה'},
-    {mid:18, date:'23/06',time:'23:00',tA:'England',       tB:'Ghana',        city:'Atlanta',       stadium:'Mercedes-Benz Stadium',   cap:'75,000', temp:'30C', fact:'גאנה ניצחה אנגליה 2:1 ב-2010'},
-    {mid:19, date:'24/06',time:'05:00',tA:'Colombia',      tB:'DR Congo',     city:'Guadalajara',   stadium:'Estadio Akron',           cap:'49,000', temp:'22C', fact:'שני כוחות חזקים מאוד בבית K'},
-    {mid:20, date:'25/06',time:'01:00',tA:'Brazil',        tB:'Scotland',     city:'Boston',        stadium:'Gillette Stadium',        cap:'65,000', temp:'23C', fact:'ברזיל-סקוטלנד - פגישה ראשונה אי פעם!'},
-    {mid:21, date:'25/06',time:'23:00',tA:'Curaçao',       tB:'Ivory Coast',  city:'Philadelphia',  stadium:'Lincoln Financial Field', cap:'69,000', temp:'28C', fact:'קוראסאו - 150,000 תושבים! הקטנה ביותר'},
-    {mid:22, date:'26/06',time:'22:00',tA:'France',        tB:'Norway',       city:'Philadelphia',  stadium:'Lincoln Financial Field', cap:'69,000', temp:'28C', fact:'הלאנד מול מבאפה - מפגש הדור'},
-    {mid:23, date:'27/06',time:'03:00',tA:'Spain',         tB:'Uruguay',      city:'Guadalajara',   stadium:'Estadio Akron',           cap:'49,000', temp:'22C', fact:'ספרד-אורוגוואי - שתי שיטות מנוגדות'},
-    {mid:24, date:'28/06',time:'00:00',tA:'Panama',        tB:'England',      city:'Atlanta',       stadium:'Mercedes-Benz Stadium',   cap:'75,000', temp:'31C', fact:'אנגליה ניצחה פנמה 6:1 ב-2018'},
-    {mid:25, date:'28/06',time:'05:00',tA:'Jordan',        tB:'Argentina',    city:'Dallas',        stadium:'AT&T Stadium',            cap:'94,000', temp:'35C', fact:'ירדן לראשונה במונדיאל! מול אלופת העולם'},
-  ];
 
   // קיבוץ לפי תאריך
   const byDate={};
-  ALL_MATCHES.forEach(m=>{
+  MATCHES.forEach(m=>{
     if(!byDate[m.date]) byDate[m.date]=[];
     byDate[m.date].push(m);
   });
@@ -1941,24 +1892,47 @@ function renderInfo(){
   }).forEach(([date,matches])=>{
     html+=`<div style="margin-bottom:4px;margin-top:10px;font-weight:700;font-size:.82em;color:var(--primary);border-bottom:2px solid var(--acc);padding-bottom:3px">📅 ${date}</div>`;
     matches.forEach(m=>{
-      const isOurs=m.mid&&OUR_MATCHES.has(m.mid);
-      html+=`<div style="background:#fff;border:1px solid ${isOurs?'#C5CAE9':'#e2e8f0'};border-radius:10px;padding:10px 12px;margin-bottom:6px;${isOurs?'border-right:3px solid #1565C0':''}">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
-          ${isOurs?`<span style="background:#0D47A1;color:#FFD600;font-size:.68em;padding:2px 5px;border-radius:4px;font-weight:700">#${m.mid}</span>`:'<span style="font-size:.68em;color:#999">⚽</span>'}
-          <div style="flex:1;display:flex;align-items:center;gap:6px;font-weight:700;font-size:.88em">
-            ${teamFlag(m.tA,15)} ${m.tA}
-            <span style="color:var(--muted);font-size:.8em;font-weight:400">${m.time}</span>
-            ${m.tB} ${teamFlag(m.tB,15)}
+      const info=MATCH_INFO[m.id]||{};
+      const res=STATE.results?.[m.id];
+      const resHtml=res!=null?`<span style="font-family:monospace;font-weight:700;font-size:.9em;background:#EEF2FF;padding:1px 6px;border-radius:4px">${res.gB}:${res.gA}</span>`:'';
+
+      // ניחושי הקבוצה
+      let cA=0,cB=0,cX=0;
+      STATE.parts.forEach(p=>{const o=p.mp?.[m.id]?.o;if(o==='A')cA++;else if(o==='B')cB++;else if(o==='X')cX++;});
+      const tot=cA+cB+cX||1;
+      const barA=Math.round(cA/tot*100),barB=Math.round(cB/tot*100),barX=Math.round(cX/tot*100);
+
+      html+=`<div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;margin-bottom:8px">
+        <!-- שורת משחק -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <span style="background:#0D47A1;color:#FFD600;font-size:.7em;padding:2px 6px;border-radius:4px;font-weight:700">#${m.id}</span>
+          <div style="flex:1;display:flex;align-items:center;gap:6px;font-weight:700;font-size:.9em">
+            ${teamFlag(m.tA,16)} ${m.tA}
+            ${resHtml||`<span style="color:var(--muted);font-size:.8em">${m.time}</span>`}
+            ${m.tB} ${teamFlag(m.tB,16)}
           </div>
         </div>
-        <div style="display:flex;gap:10px;font-size:.76em;color:#4A5568;flex-wrap:wrap;margin-bottom:4px">
-          <span>🏟️ ${m.stadium}</span>
-          <span>📍 ${m.city}</span>
-          <span>👥 ${m.cap}</span>
-          <span>🌡️ ${m.temp}</span>
+        <!-- מיקום -->
+        <div style="display:flex;gap:12px;font-size:.78em;color:#4A5568;margin-bottom:6px">
+          <span>🏟️ ${info.stadium||''}</span>
+          <span>📍 ${info.city||''}</span>
+          <span>👥 ${info.cap||''}</span>
+          <span>🌡️ ${info.temp||''}</span>
         </div>
-        <div style="font-size:.74em;color:#718096;background:#F8F9FF;border-radius:4px;padding:2px 7px">💡 ${m.fact}</div>
-        ${isOurs?getPredBar(m.mid):''}
+        <!-- עובדה -->
+        ${info.fact?`<div style="font-size:.76em;color:#718096;background:#F8F9FF;border-radius:5px;padding:3px 8px;margin-bottom:6px">💡 ${info.fact}</div>`:''}
+        <!-- ניחושי הקבוצה -->
+        <div style="font-size:.72em;color:#718096;margin-bottom:3px">ניחושי הקבוצה שלנו:</div>
+        <div style="display:flex;align-items:center;gap:4px;font-size:.75em">
+          <span style="min-width:65px;text-align:right;font-weight:600">${m.tA} ${cA}</span>
+          <div style="flex:1;height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden;display:flex">
+            <div style="width:${barA}%;background:#1565C0;height:100%"></div>
+            <div style="width:${barX}%;background:#F57F17;height:100%"></div>
+            <div style="width:${barB}%;background:#B71C1C;height:100%"></div>
+          </div>
+          <span style="min-width:65px;font-weight:600">${cB} ${m.tB}</span>
+        </div>
+        <div style="display:flex;justify-content:center;font-size:.7em;color:#718096;margin-top:2px">תיקו: ${cX}</div>
       </div>`;
     });
   });
