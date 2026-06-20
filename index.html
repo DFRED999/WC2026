@@ -83,7 +83,22 @@ input:focus,select:focus{outline:none;border-color:var(--primary);box-shadow:0 0
 #modal-close{position:absolute;left:14px;top:14px;background:none;border:none;font-size:1.4em;cursor:pointer;color:var(--muted)}
 #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#2d3748;color:#fff;padding:10px 20px;border-radius:8px;font-size:.9em;opacity:0;transition:opacity .3s;z-index:999;pointer-events:none}
 #toast.show{opacity:1}
-@media(max-width:600px){nav button{font-size:.72em;padding:8px 3px}th,td{padding:6px 5px;font-size:.8em}}
+
+.group-card{margin-bottom:24px;max-width:720px}
+.group-title{font-size:1.15em;color:var(--pd);margin:6px 0 10px;font-weight:800;direction:ltr;text-align:left}
+.group-table{direction:ltr;font-size:.86em}
+.group-table th{background:#fff;color:#4A5568;border-bottom:1px solid #D5D9E2;font-weight:600;text-align:center;padding:6px 7px}
+.group-table th.team-col{text-align:left}
+.group-table td{text-align:center;border-bottom:1px solid #D5D9E2;padding:8px 7px;color:#111827}
+.group-table td.team-cell{text-align:left;display:flex;align-items:center;gap:9px;font-weight:600;min-width:185px}
+.group-table .rank-cell{width:28px;font-weight:700;color:#111827}
+.group-table .pts-cell{font-weight:900;color:#111827}
+.group-table tr.qual td:first-child{border-left:3px solid #4F72FF}
+.form-dot{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;font-size:.7em;font-weight:800;margin:0 1px;border:2px solid #A0A7B5;color:#fff;background:#fff}
+.form-W{background:#48A868;border-color:#48A868;color:#fff}.form-D{background:#9CA3AF;border-color:#9CA3AF;color:#fff}.form-L{background:#E0524D;border-color:#E0524D;color:#fff}.form-empty{background:#fff;color:#A0A7B5}
+.group-edit-table input{width:58px;text-align:center;direction:ltr}.group-edit-table input.last5{width:90px}
+
+@media(max-width:600px){nav button{font-size:.72em;padding:8px 3px}th,td{padding:6px 5px;font-size:.8em}.group-table{font-size:.78em}.group-table td.team-cell{min-width:135px}.group-edit-table input{width:44px}.group-edit-table input.last5{width:68px}}
 </style>
 </head>
 <body>
@@ -95,6 +110,7 @@ input:focus,select:focus{outline:none;border-color:var(--primary);box-shadow:0 0
   <button class="active" onclick="showPage('lb')">🥇 מובילים</button>
   <button onclick="showPage('matches')">⚽ משחקים</button>
   <button onclick="showPage('info')">📋 מידע</button>
+  <button onclick="showPage('groups')">📊 בתים</button>
   <button onclick="showPage('compare')">📊 השוואה</button>
   <button onclick="showPage('bracket')">🏆 מטריצה</button>
   <button onclick="showPage('admin')">🔐 אדמין</button>
@@ -176,6 +192,26 @@ input:focus,select:focus{outline:none;border-color:var(--primary);box-shadow:0 0
   <div class="card">
     <h2>📋 לוח משחקים — מידע מלא</h2>
     <div id="info-content"></div>
+  </div>
+</div>
+
+
+<!-- GROUP TABLES -->
+<div id="page-groups" class="page" style="max-width:900px">
+  <div class="card">
+    <h2>📊 טבלאות בתים</h2>
+    <p style="font-size:.85em;color:var(--muted);margin-bottom:12px">הנתונים בלשונית זו עצמאיים וידניים — ניתן להעתיק מאתר חיצוני ולעדכן כאן.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+      <button class="btn btn-p btn-sm" onclick="toggleGroupEdit()">✏️ עריכת טבלאות</button>
+      <button class="btn btn-d btn-sm" onclick="if(confirm('לאפס את כל טבלאות הבתים?'))resetGroupTables()">איפוס טבלאות</button>
+    </div>
+    <div id="groups-view"></div>
+  </div>
+  <div id="groups-edit-card" class="card" style="display:none">
+    <h2>✏️ עדכון ידני</h2>
+    <p style="font-size:.82em;color:var(--muted);margin-bottom:12px">בשדה Last 5 אפשר לרשום למשל: W,D,L או WDL. הסדר בטבלה נקבע לפי נקודות, הפרש שערים ושערי זכות.</p>
+    <div id="groups-edit"></div>
+    <button class="btn btn-p" style="width:100%;margin-top:12px" onclick="saveGroupTablesFromForm()">💾 שמור טבלאות בתים</button>
   </div>
 </div>
 
@@ -498,7 +534,7 @@ function buildBaseParts(){
 }
 
 function loadState(){
-  let s={results:{},koRes:{},lastUpdated:null,matchFacts:{}};
+  let s={results:{},koRes:{},lastUpdated:null,matchFacts:{},groupTables:null};
   try{const d=localStorage.getItem('wc2026d');if(d)Object.assign(s,JSON.parse(d));}catch(e){}
   try{const mf=localStorage.getItem('wc2026mf');if(mf)s.matchFacts=JSON.parse(mf);}catch(e){}
   let parts=[...BASE_PARTS];
@@ -507,7 +543,7 @@ function loadState(){
 }
 
 function saveState(){
-  const d={results:STATE.results||{},koRes:STATE.koRes||{},lastUpdated:new Date().toISOString()};
+  const d={results:STATE.results||{},koRes:STATE.koRes||{},groupTables:STATE.groupTables||defaultGroupTables(),lastUpdated:new Date().toISOString()};
   localStorage.setItem('wc2026d',JSON.stringify(d));
   localStorage.setItem('wc2026p',JSON.stringify(STATE.parts));
   // שמור ל-Firebase
@@ -515,6 +551,7 @@ function saveState(){
     db.ref('state').set({
       results:STATE.results||{},
       koRes:STATE.koRes||{},
+      groupTables:STATE.groupTables||defaultGroupTables(),
       parts:STATE.parts,
       lastUpdated:new Date().toISOString()
     });
@@ -530,6 +567,7 @@ function loadFromFirebase(){
     if(!data) return;
     if(data.results) STATE.results=data.results;
     if(data.koRes) STATE.koRes=data.koRes;
+    if(data.groupTables) STATE.groupTables=data.groupTables;
     if(data.parts && data.parts.length>0){
       STATE.parts=BASE_PARTS.map(p=>{
         const f=data.parts.find(x=>x.id===p.id);
@@ -537,7 +575,7 @@ function loadFromFirebase(){
       });
     }
     // שמור ל-localStorage גם
-    localStorage.setItem('wc2026d',JSON.stringify({results:STATE.results,koRes:STATE.koRes}));
+    localStorage.setItem('wc2026d',JSON.stringify({results:STATE.results,koRes:STATE.koRes,groupTables:STATE.groupTables}));
     localStorage.setItem('wc2026p',JSON.stringify(STATE.parts));
     renderAll();
   }).catch(e=>console.warn('Firebase load error:',e));
@@ -548,6 +586,7 @@ function loadFromFirebase(){
     if(!data) return;
     if(data.results) STATE.results=data.results;
     if(data.koRes) STATE.koRes=data.koRes;
+    if(data.groupTables) STATE.groupTables=data.groupTables;
     if(data.parts && data.parts.length>0){
       STATE.parts=BASE_PARTS.map(p=>{
         const f=data.parts.find(x=>x.id===p.id);
@@ -559,6 +598,7 @@ function loadFromFirebase(){
 }
 
 let STATE=loadState();
+if(!STATE.groupTables) STATE.groupTables=defaultGroupTables();
 
 // ============================================================
 // SCORING
@@ -630,6 +670,102 @@ function calcMaxPossible(p){
   return max;
 }
 
+
+
+// ============================================================
+// MANUAL GROUP TABLES
+// ============================================================
+function defaultGroupTables(){
+  const obj={};
+  Object.entries(GROUPS).forEach(([g,teams])=>{
+    obj[g]=teams.map(t=>({team:t,MP:0,W:0,D:0,L:0,GF:0,GA:0,Pts:0,last5:''}));
+  });
+  return obj;
+}
+function ensureGroupTables(){
+  if(!STATE.groupTables) STATE.groupTables=defaultGroupTables();
+  const def=defaultGroupTables();
+  Object.keys(def).forEach(g=>{
+    if(!Array.isArray(STATE.groupTables[g])) STATE.groupTables[g]=def[g];
+    def[g].forEach(d=>{
+      if(!STATE.groupTables[g].find(x=>x.team===d.team)) STATE.groupTables[g].push(d);
+    });
+  });
+}
+function sortGroupRows(rows){
+  return [...rows].sort((a,b)=>
+    (Number(b.Pts)||0)-(Number(a.Pts)||0) ||
+    ((Number(b.GF)||0)-(Number(b.GA)||0))-((Number(a.GF)||0)-(Number(a.GA)||0)) ||
+    (Number(b.GF)||0)-(Number(a.GF)||0) ||
+    String(a.team).localeCompare(String(b.team))
+  );
+}
+function formDots(last5){
+  const arr=String(last5||'').replaceAll(' ','').split(/[,-]/).join('').split('').slice(0,5);
+  while(arr.length<5) arr.push('');
+  return arr.map(x=>{
+    const v=x.toUpperCase();
+    if(v==='W') return '<span class="form-dot form-W">✓</span>';
+    if(v==='D') return '<span class="form-dot form-D">−</span>';
+    if(v==='L') return '<span class="form-dot form-L">×</span>';
+    return '<span class="form-dot form-empty"></span>';
+  }).join('');
+}
+function renderGroupTables(){
+  ensureGroupTables();
+  const view=document.getElementById('groups-view');
+  if(!view) return;
+  let html='';
+  Object.keys(GROUPS).forEach(g=>{
+    const rows=sortGroupRows(STATE.groupTables[g]||[]);
+    html+=`<div class="group-card"><div class="group-title">Group ${g}</div><table class="group-table"><thead><tr><th class="team-col" colspan="2">Team</th><th>MP</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th>Pts</th><th>Last 5</th></tr></thead><tbody>`;
+    rows.forEach((r,i)=>{
+      const gd=(Number(r.GF)||0)-(Number(r.GA)||0);
+      html+=`<tr class="${i<2?'qual':''}"><td class="rank-cell">${i+1}</td><td class="team-cell">${teamFlag(r.team,18)} <span>${r.team}</span></td><td>${Number(r.MP)||0}</td><td>${Number(r.W)||0}</td><td>${Number(r.D)||0}</td><td>${Number(r.L)||0}</td><td>${Number(r.GF)||0}</td><td>${Number(r.GA)||0}</td><td>${gd}</td><td class="pts-cell">${Number(r.Pts)||0}</td><td>${formDots(r.last5)}</td></tr>`;
+    });
+    html+='</tbody></table></div>';
+  });
+  view.innerHTML=html;
+  renderGroupEditForm();
+}
+function renderGroupEditForm(){
+  ensureGroupTables();
+  const el=document.getElementById('groups-edit');
+  if(!el) return;
+  let html='';
+  Object.keys(GROUPS).forEach(g=>{
+    html+=`<h3 style="margin:14px 0 8px;color:var(--primary);direction:ltr;text-align:left">Group ${g}</h3><div style="overflow-x:auto"><table class="group-edit-table"><thead><tr><th>נבחרת</th><th>MP</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>Pts</th><th>Last 5</th></tr></thead><tbody>`;
+    (STATE.groupTables[g]||[]).forEach((r,i)=>{
+      const prefix=`gt-${g}-${i}`;
+      html+=`<tr><td style="min-width:160px">${teamFlag(r.team,16)} ${r.team}</td><td><input id="${prefix}-MP" value="${Number(r.MP)||0}" type="number"></td><td><input id="${prefix}-W" value="${Number(r.W)||0}" type="number"></td><td><input id="${prefix}-D" value="${Number(r.D)||0}" type="number"></td><td><input id="${prefix}-L" value="${Number(r.L)||0}" type="number"></td><td><input id="${prefix}-GF" value="${Number(r.GF)||0}" type="number"></td><td><input id="${prefix}-GA" value="${Number(r.GA)||0}" type="number"></td><td><input id="${prefix}-Pts" value="${Number(r.Pts)||0}" type="number"></td><td><input class="last5" id="${prefix}-last5" value="${r.last5||''}" placeholder="WDL"></td></tr>`;
+    });
+    html+='</tbody></table></div>';
+  });
+  el.innerHTML=html;
+}
+function saveGroupTablesFromForm(){
+  ensureGroupTables();
+  Object.keys(GROUPS).forEach(g=>{
+    (STATE.groupTables[g]||[]).forEach((r,i)=>{
+      const prefix=`gt-${g}-${i}`;
+      ['MP','W','D','L','GF','GA','Pts'].forEach(k=>{ const inp=document.getElementById(`${prefix}-${k}`); if(inp) r[k]=Number(inp.value)||0; });
+      const lf=document.getElementById(`${prefix}-last5`); if(lf) r.last5=lf.value.trim();
+    });
+  });
+  saveState();
+  renderGroupTables();
+}
+function toggleGroupEdit(){
+  const card=document.getElementById('groups-edit-card');
+  if(!card) return;
+  card.style.display=card.style.display==='none'?'block':'none';
+  if(card.style.display==='block') renderGroupEditForm();
+}
+function resetGroupTables(){
+  STATE.groupTables=defaultGroupTables();
+  saveState();
+  renderGroupTables();
+}
 
 // ============================================================
 // RENDER LEADERBOARD
@@ -1843,6 +1979,7 @@ function showPage(name){
   if(name==='lb') renderLeaderboard();
   if(name==='bracket') renderBracket();
   if(name==='info') renderInfo();
+  if(name==='groups') renderGroupTables();
 }
 
 function renderInfo(){
@@ -2506,6 +2643,7 @@ function renderAll(){
   renderLeaderboard();
   if(document.getElementById('page-matches').classList.contains('active')) renderMatches();
   if(document.getElementById('page-compare').classList.contains('active')){renderCompare();renderKOCompare();}
+  if(document.getElementById('page-groups')?.classList.contains('active')) renderGroupTables();
   if(adminOn){renderAdminRes();renderKOForm();renderPartsList();}
 }
 
@@ -2705,7 +2843,7 @@ function importData(input){
         }
         return {...p,...imp, ko:mergedKo};
       });
-      localStorage.setItem('wc2026d',JSON.stringify({results:STATE.results,koRes:STATE.koRes}));
+      localStorage.setItem('wc2026d',JSON.stringify({results:STATE.results,koRes:STATE.koRes,groupTables:STATE.groupTables}));
       localStorage.setItem('wc2026p',JSON.stringify(STATE.parts));
       // שמור ל-Firebase
       try{
