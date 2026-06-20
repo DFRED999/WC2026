@@ -23,51 +23,48 @@
   const db = firebase.database();
 </script>
 <style>.fi{border-radius:3px;box-shadow:0 1px 3px rgba(0,0,0,.2)}
-
-/* Mobile layout for Groups tab only */
+/* Mobile layout for Groups tab only - Apple Sports style */
 @media(max-width:600px){
-  #page-groups{padding:8px 6px!important;max-width:100%!important}
-  #page-groups .card{padding:10px;margin-bottom:10px;border-radius:10px}
-  #page-groups .card h2{font-size:.95em;margin-bottom:8px}
-  #page-groups .group-card{max-width:100%;margin-bottom:12px;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);padding:8px;overflow:hidden}
-  #page-groups .group-title{font-size:1em;margin:2px 0 6px;text-align:right;direction:rtl;color:var(--primary)}
-  #page-groups .group-table{width:100%;font-size:.78em;table-layout:auto;direction:ltr}
-  #page-groups .group-table th{padding:5px 3px;font-size:.74em;white-space:nowrap}
-  #page-groups .group-table td{padding:7px 3px;font-size:.82em;white-space:nowrap}
-  #page-groups .group-table td.team-cell{min-width:0;width:auto;gap:5px;font-size:.86em;max-width:138px;overflow:hidden;text-overflow:ellipsis}
-  #page-groups .group-table td.team-cell span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  #page-groups .group-table .pts-cell{font-size:1.08em;background:#F2F6FF;border-radius:7px;color:var(--primary)}
-  #page-groups .group-table .rank-cell{width:22px;min-width:22px}
-  #page-groups .main-group-table th:nth-child(3),
-  #page-groups .main-group-table th:nth-child(4),
-  #page-groups .main-group-table th:nth-child(5),
-  #page-groups .main-group-table th:nth-child(6),
-  #page-groups .main-group-table th:nth-child(7),
-  #page-groups .main-group-table th:nth-child(10),
-  #page-groups .main-group-table td:nth-child(4),
-  #page-groups .main-group-table td:nth-child(5),
-  #page-groups .main-group-table td:nth-child(6),
-  #page-groups .main-group-table td:nth-child(7),
-  #page-groups .main-group-table td:nth-child(8),
-  #page-groups .main-group-table td:nth-child(11){display:none}
-  #page-groups .third-table th:nth-child(5),
-  #page-groups .third-table th:nth-child(6),
-  #page-groups .third-table th:nth-child(7),
-  #page-groups .third-table th:nth-child(8),
-  #page-groups .third-table th:nth-child(9),
-  #page-groups .third-table th:nth-child(12),
-  #page-groups .third-table td:nth-child(5),
-  #page-groups .third-table td:nth-child(6),
-  #page-groups .third-table td:nth-child(7),
-  #page-groups .third-table td:nth-child(8),
-  #page-groups .third-table td:nth-child(9),
-  #page-groups .third-table td:nth-child(12){display:none}
-  #page-groups .third-place-card{max-width:100%;margin-bottom:14px;padding:10px;border-radius:12px}
-  #page-groups .third-note{font-size:.76em;line-height:1.35}
+  #page-groups{padding:10px 8px!important;max-width:100%!important;overflow-x:hidden!important}
+  #page-groups .card{padding:10px!important;margin-bottom:12px!important;border-radius:16px!important}
+  #page-groups .card h2{font-size:1em!important;margin-bottom:8px!important}
+  #page-groups .group-card{
+    background:linear-gradient(180deg,#08265c,#061a43)!important;
+    color:#fff!important;border:1px solid rgba(255,255,255,.14)!important;
+    border-radius:22px!important;box-shadow:0 8px 20px rgba(0,0,0,.18)!important;
+    padding:14px 10px 12px!important;margin:14px 0!important;overflow:hidden!important;
+  }
+  #page-groups .group-title{font-size:1.35em!important;font-weight:900!important;text-align:center!important;color:#fff!important;margin:2px 0 14px!important;direction:ltr!important}
+  #page-groups .desktop-group-table,#page-groups .desktop-third-table{display:none!important}
+  #page-groups .mobile-standings{display:block!important;direction:ltr;width:100%}
+  #page-groups .mob-head,#page-groups .mob-row{display:grid!important;grid-template-columns:32px minmax(0,1fr) 38px 30px 30px 30px 42px 42px;align-items:center;gap:4px}
+  #page-groups .mob-head{color:rgba(255,255,255,.58);font-weight:800;font-size:.82em;padding:0 4px 7px}
+  #page-groups .mob-row{min-height:48px;padding:8px 4px;border-bottom:1px solid rgba(255,255,255,.16);font-size:1.02em}
+  #page-groups .mob-row:last-child{border-bottom:none}
+  #page-groups .mob-rank{font-size:1.18em;font-weight:800;text-align:center;color:#fff}
+  #page-groups .mob-team{display:flex;align-items:center;gap:8px;min-width:0;font-weight:900;color:#fff}
+  #page-groups .mob-team .fi{flex:0 0 auto;width:23px!important;height:17px!important;border-radius:50%!important;box-shadow:none!important}
+  #page-groups .mob-team-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:1.02em}
+  #page-groups .mob-stat{text-align:center;font-weight:750;color:#fff}
+  #page-groups .mob-gd.plus::before{content:'+'}
+  #page-groups .mob-pts{font-weight:950;color:#FFD600;text-align:center}
+  #page-groups .mob-row.qual .mob-rank::before{content:'▶';color:#3be477;font-size:.55em;margin-right:5px;vertical-align:middle}
+  #page-groups .mob-row.third-maybe{background:rgba(255,255,255,.04)}
+  #page-groups .third-place-card{background:#fff!important;color:var(--text)!important;border:2px solid #F59E0B!important;border-radius:18px!important;padding:12px!important;overflow:hidden!important}
+  #page-groups .third-place-card h3{font-size:1.05em!important;margin-bottom:6px!important;text-align:right!important;color:#92400E!important}
+  #page-groups .third-note{font-size:.78em!important;line-height:1.35!important;margin-bottom:8px!important}
+  #page-groups .third-mobile-card{display:block!important;background:#fff!important;color:#111827!important}
+  #page-groups .third-mobile-card .mob-head,#page-groups .third-mobile-card .mob-row{grid-template-columns:30px minmax(0,1fr) 34px 36px 38px 40px;color:#111827}
+  #page-groups .third-mobile-card .mob-head{color:#6B7280}
+  #page-groups .third-mobile-card .mob-row{border-bottom:1px solid #E5E7EB}
+  #page-groups .third-mobile-card .mob-team,#page-groups .third-mobile-card .mob-rank,#page-groups .third-mobile-card .mob-stat{color:#111827}
+  #page-groups .third-mobile-card .mob-pts{color:#0D47A1}
+  #page-groups .third-mobile-card .mob-row.qual .mob-rank::before{color:#10B981}
   #groups-edit-card .group-edit-table{font-size:.74em}
-  #groups-edit-card .group-edit-table th,
-  #groups-edit-card .group-edit-table td{padding:5px 3px}
+  #groups-edit-card .group-edit-table th,#groups-edit-card .group-edit-table td{padding:5px 3px}
 }
+@media(min-width:601px){#page-groups .mobile-standings{display:none!important}}
+
 
 </style>
 <style>
@@ -858,11 +855,29 @@ function bestThirdPlaceRows(){
     String(a.team).localeCompare(String(b.team))
   );
 }
+function mobileTeamName(name){ return String(name||'').replace('South Korea','Korea Rep.').replace('South Africa','South Africa').replace('Ivory Coast','Côte d\'Ivoire'); }
+function renderMobileStandingRows(rows, thirdMode=false){
+  if(thirdMode){
+    let out='<div class="mobile-standings third-mobile-card"><div class="mob-head"><div>#</div><div>Team</div><div>בית</div><div>GP</div><div>GD</div><div>Pts</div></div>';
+    rows.forEach((r,i)=>{
+      const gd=Number(r.GD ?? ((Number(r.GF)||0)-(Number(r.GA)||0)))||0;
+      out+=`<div class="mob-row ${i<8?'qual':''}"><div class="mob-rank">${i+1}</div><div class="mob-team">${teamFlag(r.team,22)}<span class="mob-team-name">${mobileTeamName(r.team)}</span></div><div class="mob-stat">${r.group||''}</div><div class="mob-stat">${Number(r.MP)||0}</div><div class="mob-stat mob-gd ${gd>0?'plus':''}">${gd}</div><div class="mob-pts">${Number(r.Pts)||0}</div></div>`;
+    });
+    return out+'</div>';
+  }
+  let out='<div class="mobile-standings"><div class="mob-head"><div></div><div>Team</div><div>GP</div><div>W</div><div>D</div><div>L</div><div>GD</div><div>Pts</div></div>';
+  rows.forEach((r,i)=>{
+    const gd=(Number(r.GF)||0)-(Number(r.GA)||0);
+    out+=`<div class="mob-row ${i<2?'qual':(i===2?'third-maybe':'')}"><div class="mob-rank">${i+1}</div><div class="mob-team">${teamFlag(r.team,22)}<span class="mob-team-name">${mobileTeamName(r.team)}</span></div><div class="mob-stat">${Number(r.MP)||0}</div><div class="mob-stat">${Number(r.W)||0}</div><div class="mob-stat">${Number(r.D)||0}</div><div class="mob-stat">${Number(r.L)||0}</div><div class="mob-stat mob-gd ${gd>0?'plus':''}">${gd}</div><div class="mob-pts">${Number(r.Pts)||0}</div></div>`;
+  });
+  return out+'</div>';
+}
 function renderThirdPlaceTable(){
   const rows=bestThirdPlaceRows();
   let html=`<div class="card third-place-card"><h3>🟨 דירוג מקומות 3</h3>
     <div class="third-note">הטבלה הזו מחושבת אוטומטית מתוך ההזנות הידניות של טבלאות הבתים. 8 הראשונות מסומנות כעולות אפשריות.</div>
-    <div style="overflow-x:auto"><table class="group-table third-table"><thead><tr><th>#</th><th class="team-col">Team</th><th>בית</th><th>MP</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th>Pts</th><th>Last 5</th></tr></thead><tbody>`;
+    ${renderMobileStandingRows(rows,true)}
+    <div style="overflow-x:auto"><table class="group-table third-table desktop-third-table"><thead><tr><th>#</th><th class="team-col">Team</th><th>בית</th><th>MP</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th>Pts</th><th>Last 5</th></tr></thead><tbody>`;
   rows.forEach((r,i)=>{
     html+=`<tr class="${i<8?'qual':''}"><td class="rank-cell">${i+1}</td><td class="team-cell">${teamFlag(r.team,18)} <span>${r.team}</span></td><td>${r.group}</td><td>${r.MP}</td><td>${r.W}</td><td>${r.D}</td><td>${r.L}</td><td>${r.GF}</td><td>${r.GA}</td><td>${r.GD}</td><td class="pts-cell">${r.Pts}</td><td>${formDots(r.last5)}</td></tr>`;
   });
@@ -876,7 +891,7 @@ function renderGroupTables(){
   let html=renderThirdPlaceTable();
   Object.keys(GROUPS).forEach(g=>{
     const rows=sortGroupRows(STATE.groupTables[g]||[]);
-    html+=`<div class="group-card"><div class="group-title">Group ${g}</div><table class="group-table main-group-table"><thead><tr><th class="team-col" colspan="2">Team</th><th>MP</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th>Pts</th><th>Last 5</th></tr></thead><tbody>`;
+    html+=`<div class="group-card"><div class="group-title">Group ${g}</div>${renderMobileStandingRows(rows,false)}<table class="group-table main-group-table desktop-group-table"><thead><tr><th class="team-col" colspan="2">Team</th><th>MP</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th>Pts</th><th>Last 5</th></tr></thead><tbody>`;
     rows.forEach((r,i)=>{
       const gd=(Number(r.GF)||0)-(Number(r.GA)||0);
       html+=`<tr class="${i<2?'qual':(i===2?'third-maybe':'')}"><td class="rank-cell">${i+1}</td><td class="team-cell">${teamFlag(r.team,18)} <span>${r.team}</span></td><td>${Number(r.MP)||0}</td><td>${Number(r.W)||0}</td><td>${Number(r.D)||0}</td><td>${Number(r.L)||0}</td><td>${Number(r.GF)||0}</td><td>${Number(r.GA)||0}</td><td>${gd}</td><td class="pts-cell">${Number(r.Pts)||0}</td><td>${formDots(r.last5)}</td></tr>`;
