@@ -699,12 +699,14 @@ function calcTotal(p){
 function calcMaxPossible(p){
   let remaining = 0;
 
-  // משחקים: סופרים רק נקודות שעדיין אפשר להרוויח בעתיד
-  // כל משחק שעוד לא הוזנה לו תוצאה יכול לתת עד 2 נקודות.
+  // משחקים: סופרים רק משחקים שעדיין אין להם תוצאה תקינה.
+  // משחק שכבר הוזנה לו תוצאה — אין ממנו יותר נקודות עתידיות,
+  // גם אם המשתתף קיבל 0/1/2 נקודות בפועל.
   MATCHES.forEach(m=>{
     const res = STATE.results?.[m.id];
     const pred = p.mp?.[m.id];
-    if(pred && res == null) remaining += 2;
+    const hasResult = res && res.gA !== undefined && res.gB !== undefined && res.gA !== '' && res.gB !== '';
+    if(pred && !hasResult) remaining += 2;
   });
 
   // שלבים: סופרים רק נקודות שעדיין לא נסגרו ויכולות להתממש בהמשך.
@@ -955,16 +957,25 @@ function resetGroupTables(){
 // RENDER LEADERBOARD
 // ============================================================
 function renderLeaderboard(){
-  const played=Object.keys(STATE.results||{}).length;
+  const played=Object.values(STATE.results||{}).filter(r=>r && r.gA!==undefined && r.gB!==undefined && r.gA!=='' && r.gB!=='').length;
   document.getElementById('hdr-sub').textContent=`${STATE.parts.length} משתתפים • ${played}/${MATCHES.length} משחקים עם תוצאות`;
-  const scores=STATE.parts.map(p=>({...p,...calcTotal(p)})).sort((a,b)=>b.tot-a.tot);
+
+  // חשוב: לא מערבבים את calcTotal לתוך המשתתף עצמו,
+  // כי calcTotal מחזיר שדה בשם mp וזה היה דורס את p.mp של הניחושים.
+  // לכן שומרים part מקורי בנפרד, כדי ש-🔮 נותר יחושב לפי הניחושים האמיתיים.
+  const scores=STATE.parts
+    .map(part=>({part, score:calcTotal(part)}))
+    .sort((a,b)=>b.score.tot-a.score.tot);
+
   const tb=document.getElementById('lb-body');
   tb.innerHTML='';
-  scores.forEach((p,i)=>{
+  scores.forEach((row,i)=>{
+    const p=row.part;
+    const s=row.score;
     const r=i+1,medal=r===1?'🥇':r===2?'🥈':r===3?'🥉':r;
     const tr=document.createElement('tr');
     tr.className=r<=3?`rank-${r}`:'';
-    tr.innerHTML=`<td style="text-align:center">${medal}</td><td><span class="plink" onclick="showParticipant('${p.id}')">${p.name}</span></td><td>${p.mp}</td><td>${p.kp}</td><td>0</td><td><span class="pts-total">${p.tot}</span></td><td><span class="pts-max">${calcMaxPossible(p)}</span></td>`;
+    tr.innerHTML=`<td style="text-align:center">${medal}</td><td><span class="plink" onclick="showParticipant('${p.id}')">${p.name}</span></td><td>${s.mp}</td><td>${s.kp}</td><td>0</td><td><span class="pts-total">${s.tot}</span></td><td><span class="pts-max">${calcMaxPossible(p)}</span></td>`;
     tb.appendChild(tr);
   });
 }
