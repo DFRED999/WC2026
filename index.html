@@ -22,7 +22,54 @@
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
 </script>
-<style>.fi{border-radius:3px;box-shadow:0 1px 3px rgba(0,0,0,.2)}</style>
+<style>.fi{border-radius:3px;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+
+/* Mobile layout for Groups tab only */
+@media(max-width:600px){
+  #page-groups{padding:8px 6px!important;max-width:100%!important}
+  #page-groups .card{padding:10px;margin-bottom:10px;border-radius:10px}
+  #page-groups .card h2{font-size:.95em;margin-bottom:8px}
+  #page-groups .group-card{max-width:100%;margin-bottom:12px;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);padding:8px;overflow:hidden}
+  #page-groups .group-title{font-size:1em;margin:2px 0 6px;text-align:right;direction:rtl;color:var(--primary)}
+  #page-groups .group-table{width:100%;font-size:.78em;table-layout:auto;direction:ltr}
+  #page-groups .group-table th{padding:5px 3px;font-size:.74em;white-space:nowrap}
+  #page-groups .group-table td{padding:7px 3px;font-size:.82em;white-space:nowrap}
+  #page-groups .group-table td.team-cell{min-width:0;width:auto;gap:5px;font-size:.86em;max-width:138px;overflow:hidden;text-overflow:ellipsis}
+  #page-groups .group-table td.team-cell span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #page-groups .group-table .pts-cell{font-size:1.08em;background:#F2F6FF;border-radius:7px;color:var(--primary)}
+  #page-groups .group-table .rank-cell{width:22px;min-width:22px}
+  #page-groups .main-group-table th:nth-child(3),
+  #page-groups .main-group-table th:nth-child(4),
+  #page-groups .main-group-table th:nth-child(5),
+  #page-groups .main-group-table th:nth-child(6),
+  #page-groups .main-group-table th:nth-child(7),
+  #page-groups .main-group-table th:nth-child(10),
+  #page-groups .main-group-table td:nth-child(4),
+  #page-groups .main-group-table td:nth-child(5),
+  #page-groups .main-group-table td:nth-child(6),
+  #page-groups .main-group-table td:nth-child(7),
+  #page-groups .main-group-table td:nth-child(8),
+  #page-groups .main-group-table td:nth-child(11){display:none}
+  #page-groups .third-table th:nth-child(5),
+  #page-groups .third-table th:nth-child(6),
+  #page-groups .third-table th:nth-child(7),
+  #page-groups .third-table th:nth-child(8),
+  #page-groups .third-table th:nth-child(9),
+  #page-groups .third-table th:nth-child(12),
+  #page-groups .third-table td:nth-child(5),
+  #page-groups .third-table td:nth-child(6),
+  #page-groups .third-table td:nth-child(7),
+  #page-groups .third-table td:nth-child(8),
+  #page-groups .third-table td:nth-child(9),
+  #page-groups .third-table td:nth-child(12){display:none}
+  #page-groups .third-place-card{max-width:100%;margin-bottom:14px;padding:10px;border-radius:12px}
+  #page-groups .third-note{font-size:.76em;line-height:1.35}
+  #groups-edit-card .group-edit-table{font-size:.74em}
+  #groups-edit-card .group-edit-table th,
+  #groups-edit-card .group-edit-table td{padding:5px 3px}
+}
+
+</style>
 <style>
 :root{--primary:#1565C0;--pd:#0D47A1;--sec:#B71C1C;--acc:#FFD600;--bg:#F0F4FF;--card:#fff;--text:#1A237E;--muted:#6272A4;--border:#C5CAE9;--green:#2E7D32;--red:#C62828;--shadow:0 2px 12px rgba(21,101,192,.1)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -815,7 +862,7 @@ function renderThirdPlaceTable(){
   const rows=bestThirdPlaceRows();
   let html=`<div class="card third-place-card"><h3>🟨 דירוג מקומות 3</h3>
     <div class="third-note">הטבלה הזו מחושבת אוטומטית מתוך ההזנות הידניות של טבלאות הבתים. 8 הראשונות מסומנות כעולות אפשריות.</div>
-    <div style="overflow-x:auto"><table class="group-table"><thead><tr><th>#</th><th class="team-col">Team</th><th>בית</th><th>MP</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th>Pts</th><th>Last 5</th></tr></thead><tbody>`;
+    <div style="overflow-x:auto"><table class="group-table third-table"><thead><tr><th>#</th><th class="team-col">Team</th><th>בית</th><th>MP</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th>Pts</th><th>Last 5</th></tr></thead><tbody>`;
   rows.forEach((r,i)=>{
     html+=`<tr class="${i<8?'qual':''}"><td class="rank-cell">${i+1}</td><td class="team-cell">${teamFlag(r.team,18)} <span>${r.team}</span></td><td>${r.group}</td><td>${r.MP}</td><td>${r.W}</td><td>${r.D}</td><td>${r.L}</td><td>${r.GF}</td><td>${r.GA}</td><td>${r.GD}</td><td class="pts-cell">${r.Pts}</td><td>${formDots(r.last5)}</td></tr>`;
   });
@@ -829,7 +876,7 @@ function renderGroupTables(){
   let html=renderThirdPlaceTable();
   Object.keys(GROUPS).forEach(g=>{
     const rows=sortGroupRows(STATE.groupTables[g]||[]);
-    html+=`<div class="group-card"><div class="group-title">Group ${g}</div><table class="group-table"><thead><tr><th class="team-col" colspan="2">Team</th><th>MP</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th>Pts</th><th>Last 5</th></tr></thead><tbody>`;
+    html+=`<div class="group-card"><div class="group-title">Group ${g}</div><table class="group-table main-group-table"><thead><tr><th class="team-col" colspan="2">Team</th><th>MP</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th>Pts</th><th>Last 5</th></tr></thead><tbody>`;
     rows.forEach((r,i)=>{
       const gd=(Number(r.GF)||0)-(Number(r.GA)||0);
       html+=`<tr class="${i<2?'qual':(i===2?'third-maybe':'')}"><td class="rank-cell">${i+1}</td><td class="team-cell">${teamFlag(r.team,18)} <span>${r.team}</span></td><td>${Number(r.MP)||0}</td><td>${Number(r.W)||0}</td><td>${Number(r.D)||0}</td><td>${Number(r.L)||0}</td><td>${Number(r.GF)||0}</td><td>${Number(r.GA)||0}</td><td>${gd}</td><td class="pts-cell">${Number(r.Pts)||0}</td><td>${formDots(r.last5)}</td></tr>`;
