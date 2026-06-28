@@ -122,6 +122,7 @@ input:focus,select:focus{outline:none;border-color:var(--primary);box-shadow:0 0
 .tpill{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;font-size:.8em;font-weight:600;white-space:nowrap;border:1px solid var(--border);background:#F8F9FF}
 .tpill.hit{background:#c6f6d5;border-color:#9ae6b4;color:#276749}
 .tpill.miss{background:#fed7d7;border-color:#feb2b2;color:#9b2c2c}
+.tpill.eliminated,.tpill.miss{background:#fed7d7!important;border-color:#feb2b2!important;color:#9b2c2c!important}
 /* Modal */
 #modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;overflow-y:auto}
 #modal-inner{background:#fff;max-width:720px;margin:20px auto;border-radius:12px;padding:20px;position:relative}
@@ -164,10 +165,10 @@ input:focus,select:focus{outline:none;border-color:var(--primary);box-shadow:0 0
 <div id="toast"></div>
 
 <!-- LEADERBOARD -->
-<div id="page-lb" class="page active" style="max-width:600px">
+<div id="page-lb" class="page active" style="max-width:700px">
   <div class="card">
     <h2>🏆 טבלת מובילים</h2>
-    <table><thead><tr><th>#</th><th>שם</th><th>⚽ משחקים</th><th>🏆 שלבים</th><th>🎯 בונוס</th><th>סה"כ</th><th>🔮 נותר</th></tr></thead>
+    <table><thead><tr><th>#</th><th>שם</th><th>⚽ משחקים</th><th>🏆 שלבים</th><th>🎯 בונוס</th><th>סה"כ</th><th>🔮 נותר</th><th>📈 סה"כ + נותר</th></tr></thead>
     <tbody id="lb-body"></tbody></table>
   </div>
 </div>
@@ -686,12 +687,26 @@ function calcTotal(p){
 }
 
 
+
+function isTeamEliminatedAfterGroups(team){
+  const r32 = Array.isArray(STATE.koRes?.r32) ? STATE.koRes.r32 : [];
+  return r32.length >= 32 && team && !r32.includes(team);
+}
+
+function koTeamStatusClass(team,key){
+  if(!team) return '';
+  const realArr = Array.isArray(STATE.koRes?.[key]) ? STATE.koRes[key] : [];
+  if(realArr.includes(team)) return 'hit';
+  if(key !== 'r32' && isTeamEliminatedAfterGroups(team)) return 'miss';
+  const expected = (KO_STAGES.find(s=>s.key===key)||{}).count || 0;
+  if(realArr.length >= expected && expected > 0) return 'miss';
+  return '';
+}
+
 function calcMaxPossible(p){
   let remaining = 0;
 
-  // משחקים: סופרים רק משחקים שעדיין אין להם תוצאה תקינה.
-  // משחק שכבר הוזנה לו תוצאה — אין ממנו יותר נקודות עתידיות,
-  // גם אם המשתתף קיבל 0/1/2 נקודות בפועל.
+  // משחקים: רק משחקים שעדיין אין להם תוצאה יכולים לתת נקודות עתידיות.
   MATCHES.forEach(m=>{
     const res = STATE.results?.[m.id];
     const pred = p.mp?.[m.id];
@@ -699,9 +714,15 @@ function calcMaxPossible(p){
     if(pred && !hasResult) remaining += 2;
   });
 
-  // שלבים: סופרים רק נקודות שעדיין לא נסגרו ויכולות להתממש בהמשך.
+  // אחרי שהוזנו 32 העולות בפועל:
+  // נבחרת שלא עלתה משלב הבתים כבר לא יכולה לתת נקודות פוטנציאליות בשלבי הנוקאאוט.
+  const realR32 = Array.isArray(STATE.koRes?.r32) ? STATE.koRes.r32 : [];
+  const realR32Set = new Set(realR32);
+  const hasClosedR32 = realR32.length >= 32;
+
   KO_STAGES.forEach(stage=>{
     const key = stage.key;
+
     if(key === 'endtype'){
       const real = STATE.koRes?.[key]?.[0];
       const pred = p.ko?.[key];
@@ -709,24 +730,20 @@ function calcMaxPossible(p){
       return;
     }
 
-    const predArr = Array.isArray(p.ko?.[key]) ? p.ko[key] : [];
+    const predArrRaw = Array.isArray(p.ko?.[key]) ? p.ko[key] : [];
     const realArr = Array.isArray(STATE.koRes?.[key]) ? STATE.koRes[key] : [];
-    const expected = stage.count || predArr.length;
+    const expected = stage.count || predArrRaw.length;
 
-    // אם השלב כבר נסגר במלואו — אין בו יותר פוטנציאל עתידי.
     if(realArr.length >= expected) return;
 
     const realSet = new Set(realArr);
+
+    const predArr = (key === 'r32' || !hasClosedR32)
+      ? predArrRaw
+      : predArrRaw.filter(t => realR32Set.has(t));
+
     const alreadyHit = predArr.filter(t => realSet.has(t)).length;
     remaining += Math.max(0, predArr.length - alreadyHit) * stage.pts;
-  });
-
-  // בונוסים: אם עדיין אין תשובה רשמית לשאלת בונוס, עדיין יש פוטנציאל לזכות בה.
-  ['b1','b2','b3','b4'].forEach(k=>{
-    const pred = normalizeBonusValue(p.bonus?.[k]);
-    const realRaw = STATE.koRes?.[`bonus_${k}`];
-    const realArr = Array.isArray(realRaw) ? realRaw : (realRaw ? [realRaw] : []);
-    if(pred && !realArr.length) remaining += BONUS_POINTS;
   });
 
   return remaining;
@@ -973,7 +990,9 @@ function renderLeaderboard(){
     const r=i+1,medal=r===1?'🥇':r===2?'🥈':r===3?'🥉':r;
     const tr=document.createElement('tr');
     tr.className=r<=3?`rank-${r}`:'';
-    tr.innerHTML=`<td style="text-align:center">${medal}</td><td><span class="plink" onclick="showParticipant('${p.id}')">${p.name}</span></td><td>${s.mp}</td><td>${s.kp}</td><td>${s.bp}</td><td><span class="pts-total">${s.tot}</span></td><td><span class="pts-max">${calcMaxPossible(p)}</span></td>`;
+    const remain = calcMaxPossible(p);
+    const totalPotential = s.tot + remain;
+    tr.innerHTML=`<td style="text-align:center">${medal}</td><td><span class="plink" onclick="showParticipant('${p.id}')">${p.name}</span></td><td>${s.mp}</td><td>${s.kp}</td><td>${s.bp}</td><td><span class="pts-total">${s.tot}</span></td><td><span class="pts-max">${remain}</span></td><td><span class="pts-total" style="background:#4527A0;color:#fff">${totalPotential}</span></td>`;
     tb.appendChild(tr);
   });
 }
@@ -1132,8 +1151,7 @@ function renderKOCompare(){
         }
         const team=pred[i];
         if(!team){cells+=`<td style="color:var(--muted);text-align:center">—</td>`;return;}
-        const hit=hasReal&&realSet.has(team),miss=hasReal&&!realSet.has(team);
-        const cls=hit?'hit':miss?'miss':'';
+        const cls = koTeamStatusClass(team, stage.key);
         // find group position for this team
         let posBadge='';
         if(stage.key==='r32'){
