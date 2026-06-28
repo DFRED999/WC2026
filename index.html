@@ -158,11 +158,8 @@ input:focus,select:focus{outline:none;border-color:var(--primary);box-shadow:0 0
 <nav>
   <button class="active" onclick="showPage('lb')">🥇 מובילים</button>
   <button onclick="showPage('matches')">⚽ משחקים</button>
-  <button onclick="showPage('info')">📋 מידע</button>
-  <button onclick="showPage('groups')">📊 בתים</button>
-  <button onclick="showPage('compare')">📊 השוואה</button>
-  <button onclick="showPage('bracket')">🏆 מטריצה</button>
-  <button onclick="showPage('admin')">🔐 אדמין</button>
+      <button onclick="showPage('compare')">📊 השוואה</button>
+    <button onclick="showPage('admin')">🔐 אדמין</button>
 </nav>
 <div id="toast"></div>
 
@@ -244,33 +241,6 @@ input:focus,select:focus{outline:none;border-color:var(--primary);box-shadow:0 0
   </div>
 </div>
 
-
-<!-- GROUP TABLES -->
-<div id="page-groups" class="page" style="max-width:900px">
-  <div class="card">
-    <h2>📊 טבלאות בתים</h2>
-    <p style="font-size:.85em;color:var(--muted);margin-bottom:12px">הנתונים בלשונית זו עצמאיים וידניים — ניתן להעתיק מאתר חיצוני ולעדכן כאן.</p>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
-      <button class="btn btn-p btn-sm" onclick="toggleGroupEdit()">✏️ עריכת טבלאות</button>
-      <button class="btn btn-d btn-sm" onclick="if(confirm('לאפס את כל טבלאות הבתים?'))resetGroupTables()">איפוס טבלאות</button>
-    </div>
-    <div id="groups-view"></div>
-  </div>
-  <div id="groups-edit-card" class="card" style="display:none">
-    <h2>✏️ עדכון ידני</h2>
-    <p style="font-size:.82em;color:var(--muted);margin-bottom:12px">בשדה Last 5 אפשר לרשום למשל: W,D,L או WDL. הסדר בטבלה נקבע לפי נקודות, הפרש שערים ושערי זכות.</p>
-    <div id="groups-edit"></div>
-    <button class="btn btn-p" style="width:100%;margin-top:12px" onclick="saveGroupTablesFromForm()">💾 שמור טבלאות בתים</button>
-  </div>
-</div>
-
-<!-- BRACKET -->
-<div id="page-bracket" class="page" style="max-width:100%;padding:10px 6px">
-  <div class="card" style="padding:10px">
-    <h2>🏆 מטריצת מונדיאל 2026</h2>
-    <div id="bracket-container" style="overflow-x:auto;direction:ltr;padding-bottom:8px"></div>
-  </div>
-</div>
 
 <!-- ADMIN -->
 <div id="page-admin" class="page">
@@ -688,11 +658,31 @@ function calcKOPts(p,key){
   return(Array.isArray(pred)?pred:[]).filter(t=>rs.has(t)).length*si.pts;
 }
 
+const BONUS_POINTS = 1; // נקודה אחת לכל שאלת בונוס נכונה
+
+function normalizeBonusValue(v){
+  if(Array.isArray(v)) v = v[0];
+  return String(v ?? '').trim().toLowerCase();
+}
+
+function calcBonusPts(p,k){
+  const pred = normalizeBonusValue(p.bonus?.[k]);
+  const realRaw = STATE.koRes?.[`bonus_${k}`];
+  const realArr = Array.isArray(realRaw) ? realRaw : (realRaw ? [realRaw] : []);
+  if(!pred || !realArr.length) return 0;
+  return realArr.some(x => normalizeBonusValue(x) === pred) ? BONUS_POINTS : 0;
+}
+
+function calcAllBonusPts(p){
+  return ['b1','b2','b3','b4'].reduce((sum,k)=>sum+calcBonusPts(p,k),0);
+}
+
 function calcTotal(p){
-  let mp=0,kp=0;
+  let mp=0,kp=0,bp=0;
   MATCHES.forEach(m=>mp+=calcMatchPts(p,m.id).pts);
   KO_STAGES.forEach(s=>kp+=calcKOPts(p,s.key));
-  return{mp,kp,tot:mp+kp};
+  bp = calcAllBonusPts(p);
+  return{mp,kp,bp,bonus:bp,tot:mp+kp+bp};
 }
 
 
@@ -729,6 +719,14 @@ function calcMaxPossible(p){
     const realSet = new Set(realArr);
     const alreadyHit = predArr.filter(t => realSet.has(t)).length;
     remaining += Math.max(0, predArr.length - alreadyHit) * stage.pts;
+  });
+
+  // בונוסים: אם עדיין אין תשובה רשמית לשאלת בונוס, עדיין יש פוטנציאל לזכות בה.
+  ['b1','b2','b3','b4'].forEach(k=>{
+    const pred = normalizeBonusValue(p.bonus?.[k]);
+    const realRaw = STATE.koRes?.[`bonus_${k}`];
+    const realArr = Array.isArray(realRaw) ? realRaw : (realRaw ? [realRaw] : []);
+    if(pred && !realArr.length) remaining += BONUS_POINTS;
   });
 
   return remaining;
@@ -975,7 +973,7 @@ function renderLeaderboard(){
     const r=i+1,medal=r===1?'🥇':r===2?'🥈':r===3?'🥉':r;
     const tr=document.createElement('tr');
     tr.className=r<=3?`rank-${r}`:'';
-    tr.innerHTML=`<td style="text-align:center">${medal}</td><td><span class="plink" onclick="showParticipant('${p.id}')">${p.name}</span></td><td>${s.mp}</td><td>${s.kp}</td><td>0</td><td><span class="pts-total">${s.tot}</span></td><td><span class="pts-max">${calcMaxPossible(p)}</span></td>`;
+    tr.innerHTML=`<td style="text-align:center">${medal}</td><td><span class="plink" onclick="showParticipant('${p.id}')">${p.name}</span></td><td>${s.mp}</td><td>${s.kp}</td><td>${s.bp}</td><td><span class="pts-total">${s.tot}</span></td><td><span class="pts-max">${calcMaxPossible(p)}</span></td>`;
     tb.appendChild(tr);
   });
 }
@@ -1073,8 +1071,18 @@ function renderCompare(){
   bsep.innerHTML=`<td colspan="${sorted.length+1}" style="background:var(--pd);color:var(--acc);font-weight:700;padding:6px 10px;font-size:.85em">🎯 שאלות בונוס</td>`;
   tb.appendChild(bsep);
   [['b1','🥅 הכי שערים בבתים'],['b2','📉 מאזן גרוע'],['b3','🔢 מקסימום שערים'],['b4','0️⃣ משחקים 0:0']].forEach(([k,q])=>{
+    const realRaw = STATE.koRes?.[`bonus_${k}`];
+    const realArr = Array.isArray(realRaw) ? realRaw : (realRaw ? [realRaw] : []);
     let row=`<td style="font-size:.82em;font-weight:600">${q}</td>`;
-    sorted.forEach(p=>row+=`<td style="text-align:center;font-size:.88em">${p.bonus?.[k]||'—'}</td>`);
+    sorted.forEach(p=>{
+      const val = p.bonus?.[k] || '—';
+      const hasPred = !!normalizeBonusValue(p.bonus?.[k]);
+      const hit = hasPred && realArr.some(x => normalizeBonusValue(x) === normalizeBonusValue(p.bonus?.[k]));
+      const miss = hasPred && realArr.length && !hit;
+      const bg = hit ? '#c6f6d5' : miss ? '#fed7d7' : '';
+      const color = hit ? '#276749' : miss ? '#9b2c2c' : '';
+      row+=`<td style="text-align:center;font-size:.88em;background:${bg};color:${color};font-weight:${hit||miss?'700':'400'}">${val}${hit?' ✓':miss?' ✕':''}</td>`;
+    });
     const tr=document.createElement('tr');tr.innerHTML=row;tb.appendChild(tr);
   });
   // endtype row
@@ -1391,7 +1399,14 @@ function showParticipant(id){
     bonusHtml=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">`;
     Object.entries(bl).forEach(([k,q])=>{
       if(!p.bonus?.[k]) return;
-      bonusHtml+=`<div style="background:#EEF2FF;border-radius:8px;padding:10px 14px"><div style="font-size:.78em;color:#718096">${q}</div><div style="font-weight:700;color:#1565C0;font-size:1em">${p.bonus[k]}</div></div>`;
+      const realRaw = STATE.koRes?.[`bonus_${k}`];
+      const realArr = Array.isArray(realRaw) ? realRaw : (realRaw ? [realRaw] : []);
+      const hit = realArr.some(x => normalizeBonusValue(x) === normalizeBonusValue(p.bonus?.[k]));
+      const miss = realArr.length && !hit;
+      const bg = hit ? '#c6f6d5' : miss ? '#fed7d7' : '#EEF2FF';
+      const color = hit ? '#276749' : miss ? '#9b2c2c' : '#1565C0';
+      const mark = hit ? ' ✓' : miss ? ' ✕' : '';
+      bonusHtml+=`<div style="background:${bg};border-radius:8px;padding:10px 14px"><div style="font-size:.78em;color:#718096">${q}</div><div style="font-weight:700;color:${color};font-size:1em">${p.bonus[k]}${mark}</div></div>`;
     });
     if(p.ko?.endtype){
       const realEnd=STATE.koRes?.endtype?.[0];
@@ -2387,8 +2402,7 @@ function renderR32(){
 function renderBracket(){
   const div=document.getElementById('bracket-container');
   if(!div) return;
-  const ko=STATE.koRes||{};
-  const gpos=ko.groupPos||{};
+  const r=STATE.koRes||{};
 
   const fl=(name,h=14)=>{
     const code=FLAG_CODES[name]||'';
@@ -2405,103 +2419,88 @@ function renderBracket(){
     </div>`;
   };
 
-  // מחזיר את הנבחרת שסומנה בפועל במקום 1/2/3 בבית מסוים בלשונית נוקאאוט.
-  const getGroupPosTeam=(group,pos)=>{
-    const row=gpos[group]||{};
-    return row[pos] || row[String(pos)] || (Array.isArray(row)?row[pos]:null) || null;
-  };
-
-  // קובע מי אמור להופיע במשבצת של המטריצה לפי מיקום בבית.
-  // 3rd מחפש רק מתוך קבוצות המועמדות למשבצת; אם כבר שמרת r32, הוא בוחר את מי שבאמת עלה.
-  const r32set=new Set(ko.r32||[]);
-  const resolveBracketSlot=(slot)=>{
-    if(slot.type==='winner') return {label:`1${slot.g}`, team:getGroupPosTeam(slot.g,1), candidates:[]};
-    if(slot.type==='runner') return {label:`2${slot.g}`, team:getGroupPosTeam(slot.g,2), candidates:[]};
-    if(slot.type==='third'){
-      const groups=slot.gs.split('/').filter(Boolean);
-      const candidates=groups.map(g=>({g,team:getGroupPosTeam(g,3)})).filter(x=>x.team);
-      const selected=candidates.find(x=>r32set.has(x.team));
-      return {label:`3 ${slot.gs}`, team:selected?.team||null, candidates};
-    }
-    return {label:'',team:null,candidates:[]};
-  };
-
-  const r32box=(slotA,slotB,m)=>{
-    const renderSlot=(slot)=>{
-      const rs=resolveBracketSlot(slot);
-      if(rs.team){
-        return `<div style="font-weight:700;color:#1A237E;display:flex;align-items:center;gap:4px;white-space:nowrap">${fl(rs.team,13)}${rs.team}<span style="font-size:.72em;color:#718096;margin-right:auto">${rs.label}</span></div>`;
-      }
-      if(rs.candidates?.length){
-        const cand=rs.candidates.map(x=>`<span style="display:inline-flex;align-items:center;gap:2px;background:#EEF2FF;border-radius:4px;padding:1px 4px;margin:1px;font-size:.82em;color:#4A5568">${fl(x.team,10)}${x.team}</span>`).join('');
-        return `<div style="color:#718096;font-size:.72em"><b>${rs.label}</b><br>${cand}</div>`;
-      }
-      return `<div style="font-weight:600;color:#718096">${rs.label||'—'}</div>`;
-    };
-    return `<div style="border:1px solid #e2e8f0;border-radius:4px;padding:3px 6px;font-size:.68em;background:#F8F9FF;min-width:150px">
-      <div style="color:#718096;font-size:.85em;margin-bottom:2px">משחק ${m}</div>
-      ${renderSlot(slotA)}
-      ${renderSlot(slotB)}
+  const pair=(t1,t2,mNum)=>`
+    <div style="display:flex;flex-direction:column;gap:1px;position:relative">
+      ${box(t1,'')}
+      ${box(t2,'')}
+      <div style="position:absolute;right:-12px;top:50%;transform:translateY(-50%);font-size:.6em;color:#718096;background:#fff;padding:0 2px">${mNum}</div>
     </div>`;
-  };
 
-  const colGap='display:flex;flex-direction:column;gap:4px;';
-  const hdr=(txt,bg)=>`<div style="background:${bg};color:#FFD600;text-align:center;padding:4px;font-size:.72em;font-weight:700;border-radius:4px;margin-bottom:6px">${txt}</div>`;
-
-  const LEFT=[
-    {a:{type:'winner',g:'E'},b:{type:'third',gs:'A/B/C/D/F'},m:74},
-    {a:{type:'winner',g:'I'},b:{type:'third',gs:'C/D/F/G/H'},m:77},
-    {a:{type:'runner',g:'A'},b:{type:'runner',g:'B'},m:73},
-    {a:{type:'winner',g:'F'},b:{type:'runner',g:'C'},m:75},
-    {a:{type:'runner',g:'K'},b:{type:'runner',g:'L'},m:83},
-    {a:{type:'winner',g:'H'},b:{type:'runner',g:'J'},m:84},
-    {a:{type:'winner',g:'D'},b:{type:'third',gs:'B/E/F/I/J'},m:81},
-    {a:{type:'winner',g:'G'},b:{type:'third',gs:'A/E/H/I/J'},m:82},
-  ];
-  const RIGHT=[
-    {a:{type:'winner',g:'C'},b:{type:'runner',g:'F'},m:76},
-    {a:{type:'runner',g:'E'},b:{type:'runner',g:'I'},m:78},
-    {a:{type:'winner',g:'A'},b:{type:'third',gs:'C/E/F/H/I'},m:79},
-    {a:{type:'winner',g:'L'},b:{type:'third',gs:'E/H/I/J/K'},m:80},
-    {a:{type:'winner',g:'J'},b:{type:'runner',g:'H'},m:86},
-    {a:{type:'runner',g:'D'},b:{type:'winner',g:'G'},m:88},
-    {a:{type:'winner',g:'B'},b:{type:'third',gs:'E/F/G/I/J'},m:85},
-    {a:{type:'winner',g:'K'},b:{type:'third',gs:'D/E/I/J/L'},m:87},
-  ];
-
+  const ko=r;
   const r16=ko.r16||[];
   const qf=ko.qf||[];
   const sf=ko.sf||[];
   const fin=ko.final||[];
   const champ=(ko.champ||[])[0]||null;
 
-  div.innerHTML=`
-  <div style="display:flex;gap:6px;align-items:flex-start;min-width:1060px">
+  // מבנה הצד השמאלי (משחקים 73-84)
+  const LEFT=[
+    {r32a:'Win E',r32b:'3rd A/B/C/D/F',m32:74},
+    {r32a:'Win I',r32b:'3rd C/D/F/G/H',m32:77},
+    {r32a:'Run A',r32b:'Run B',m32:73},
+    {r32a:'Win F',r32b:'Run C',m32:75},
+    {r32a:'Run K',r32b:'Run L',m32:83},
+    {r32a:'Win H',r32b:'Run J',m32:84},
+    {r32a:'Win D',r32b:'3rd B/E/F/I/J',m32:81},
+    {r32a:'Win G',r32b:'3rd A/E/H/I/J',m32:82},
+  ];
+  // מבנה הצד הימני (משחקים 76-87)
+  const RIGHT=[
+    {r32a:'Win C',r32b:'Run F',m32:76},
+    {r32a:'Run E',r32b:'Run I',m32:78},
+    {r32a:'Win A',r32b:'3rd C/E/F/H/I',m32:79},
+    {r32a:'Win L',r32b:'3rd E/H/I/J/K',m32:80},
+    {r32a:'Win J',r32b:'Run H',m32:86},
+    {r32a:'Run D',r32b:'Win G',m32:88},
+    {r32a:'Win B',r32b:'3rd E/F/G/I/J',m32:85},
+    {r32a:'Win K',r32b:'3rd D/E/I/J/L',m32:87},
+  ];
 
-    <div style="${colGap}width:160px">
+  const r32box=(a,b,m)=>`
+    <div style="border:1px solid #e2e8f0;border-radius:4px;padding:3px 6px;font-size:.68em;background:#F8F9FF;min-width:130px">
+      <div style="color:#718096;font-size:.85em;margin-bottom:1px">משחק ${m}</div>
+      <div style="font-weight:600;color:#1A237E">${a}</div>
+      <div style="font-weight:600;color:#1A237E">${b}</div>
+    </div>`;
+
+  const colGap='display:flex;flex-direction:column;gap:4px;';
+  const hdr=(txt,bg)=>`<div style="background:${bg};color:#FFD600;text-align:center;padding:4px;font-size:.72em;font-weight:700;border-radius:4px;margin-bottom:6px">${txt}</div>`;
+
+  div.innerHTML=`
+  <div style="display:flex;gap:6px;align-items:flex-start;min-width:1000px">
+
+    <!-- R32 שמאל -->
+    <div style="${colGap}width:140px">
       ${hdr('Round of 32','#0D47A1')}
-      ${LEFT.map(({a,b,m})=>r32box(a,b,m)).join('<div style="height:3px"></div>')}
+      ${LEFT.map(({r32a,r32b,m32})=>r32box(r32a,r32b,m32)).join('<div style="height:3px"></div>')}
     </div>
 
+    <!-- R16 שמאל -->
     <div style="${colGap}width:135px;padding-top:22px">
       ${hdr('Round of 16','#1565C0')}
       ${[0,2,4,6].map(i=>`
         <div style="display:flex;flex-direction:column;gap:1px;margin-bottom:3px">
-          ${box(r16[i],'M'+(LEFT[i]?.m||''))}
-          ${box(r16[i+1],'M'+(LEFT[i+1]?.m||''))}
+          ${box(r16[i],'M'+(LEFT[i]?.m32||''))}
+          ${box(r16[i+1],'M'+(LEFT[i+1]?.m32||''))}
         </div>`).join('')}
     </div>
 
+    <!-- QF שמאל -->
     <div style="${colGap}width:130px;padding-top:44px">
       ${hdr('Quarter Finals','#1976D2')}
-      ${[0,1].map(i=>`<div style="margin-bottom:8px">${box(qf[i],'M'+(i===0?89:90))}</div>`).join('')}
+      ${[0,1].map(i=>`
+        <div style="margin-bottom:8px">
+          ${box(qf[i],'M'+(i===0?89:90))}
+        </div>`).join('')}
     </div>
 
+    <!-- SF שמאל -->
     <div style="${colGap}width:125px;padding-top:80px">
       ${hdr('Semi Finals','#1E88E5')}
       ${box(sf[0],'M97')}
     </div>
 
+    <!-- FINAL CENTER -->
     <div style="display:flex;flex-direction:column;align-items:center;width:130px;padding-top:120px;gap:4px">
       ${hdr('Final','#2196F3')}
       ${box(fin[0],'M101')}
@@ -2510,32 +2509,40 @@ function renderBracket(){
       ${box(fin[1],'')}
     </div>
 
+    <!-- SF ימין -->
     <div style="${colGap}width:125px;padding-top:80px">
       ${hdr('Semi Finals','#1E88E5')}
       ${box(sf[1],'M99')}
     </div>
 
+    <!-- QF ימין -->
     <div style="${colGap}width:130px;padding-top:44px">
       ${hdr('Quarter Finals','#1976D2')}
-      ${[2,3].map(i=>`<div style="margin-bottom:8px">${box(qf[i],'M'+(i===2?91:92))}</div>`).join('')}
+      ${[2,3].map(i=>`
+        <div style="margin-bottom:8px">
+          ${box(qf[i],'M'+(i===2?91:92))}
+        </div>`).join('')}
     </div>
 
+    <!-- R16 ימין -->
     <div style="${colGap}width:135px;padding-top:22px">
       ${hdr('Round of 16','#1565C0')}
       ${[0,2,4,6].map(i=>`
         <div style="display:flex;flex-direction:column;gap:1px;margin-bottom:3px">
-          ${box(r16[8+i],'M'+(RIGHT[i]?.m||''))}
-          ${box(r16[8+i+1],'M'+(RIGHT[i+1]?.m||''))}
+          ${box(r16[8+i],'M'+(RIGHT[i]?.m32||''))}
+          ${box(r16[8+i+1],'M'+(RIGHT[i+1]?.m32||''))}
         </div>`).join('')}
     </div>
 
-    <div style="${colGap}width:160px">
+    <!-- R32 ימין -->
+    <div style="${colGap}width:140px">
       ${hdr('Round of 32','#0D47A1')}
-      ${RIGHT.map(({a,b,m})=>r32box(a,b,m)).join('<div style="height:3px"></div>')}
+      ${RIGHT.map(({r32a,r32b,m32})=>r32box(r32a,r32b,m32)).join('<div style="height:3px"></div>')}
     </div>
 
   </div>`;
 }
+
 function renderWAPage(){
   const div=document.getElementById('wa-admin-content');
   if(!div) return;
@@ -2695,7 +2702,7 @@ function waGenerate(type){
     sorted.forEach((p,i)=>{
       const t=calcTotal(p);
       const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}.`;
-      text+=`${medal} *${p.name}* — ${t.tot} נק' (⚽${t.mp} 🏆${t.kp})\n`;
+      text+=`${medal} *${p.name}* — ${t.tot} נק' (⚽${t.mp} 🏆${t.kp} 🎯${t.bp})\n`;
     });
     text+=`\nטוטו מונדיאל 2026 🔥`;
   }
@@ -3079,8 +3086,8 @@ function exportExcel(){
   const sorted=[...STATE.parts].sort((a,b)=>calcTotal(b).tot-calcTotal(a).tot);
 
   // --- Sheet 1: Leaderboard ---
-  const lbData=[['#','שם','משחקים','שלבים','סה"כ']];
-  sorted.forEach((p,i)=>{const t=calcTotal(p);lbData.push([i+1,p.name,t.mp,t.kp,t.tot]);});
+  const lbData=[['#','שם','משחקים','שלבים','בונוס','סה"כ']];
+  sorted.forEach((p,i)=>{const t=calcTotal(p);lbData.push([i+1,p.name,t.mp,t.kp,t.bp,t.tot]);});
   const lbSheet=XLSX.utils.aoa_to_sheet(lbData);
   lbSheet['!cols']=[{wch:4},{wch:16},{wch:10},{wch:10},{wch:8}];
   XLSX.utils.book_append_sheet(wb,lbSheet,'מובילים');
@@ -3113,7 +3120,7 @@ function exportExcel(){
     const t=calcTotal(p);
     const rows=[
       [`טוטו מונדיאל 2026 — ${p.name}`],
-      [`סה"כ: ${t.tot} נק' | משחקים: ${t.mp} | שלבים: ${t.kp}`],
+      [`סה"כ: ${t.tot} נק' | משחקים: ${t.mp} | שלבים: ${t.kp} | בונוס: ${t.bp}`],
       [],
       ['#','משחק','תאריך','ניחוש','תוצאה','נקודות']
     ];
@@ -3169,12 +3176,12 @@ function exportPDFCompare(){
   // Page 1: Leaderboard
   html+=`<h1>🏆 טוטו מונדיאל 2026 — טבלת מובילים</h1>
   <table style="width:55%"><thead><tr>
-    <th style="width:20px">#</th><th style="text-align:right">שם</th><th>משחקים</th><th>שלבים</th><th>סה"כ</th>
+    <th style="width:20px">#</th><th style="text-align:right">שם</th><th>משחקים</th><th>שלבים</th><th>בונוס</th><th>סה"כ</th>
   </tr></thead><tbody>`;
   sorted.forEach((p,i)=>{
     const t=calcTotal(p);
     const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1;
-    html+=`<tr><td>${medal}</td><td style="text-align:right;font-weight:700">${p.name}</td><td>${t.mp}</td><td>${t.kp}</td><td><span class="pts">${t.tot}</span></td></tr>`;
+    html+=`<tr><td>${medal}</td><td style="text-align:right;font-weight:700">${p.name}</td><td>${t.mp}</td><td>${t.kp}</td><td>${t.bp}</td><td><span class="pts">${t.tot}</span></td></tr>`;
   });
   html+=`</tbody></table>`;
 
