@@ -85,6 +85,64 @@
 .ko-stage-toggle:hover{filter:brightness(1.05)}
 .ko-stage-wrap{display:block}
 
+
+.ko-match-admin{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:10px;
+}
+.ko-match-card{
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:12px;
+  background:#F8F9FF;
+}
+.ko-match-title{
+  font-weight:800;
+  color:var(--primary);
+  margin-bottom:8px;
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  align-items:center;
+}
+.ko-winner-buttons{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.ko-winner-btn{
+  border:2px solid var(--border);
+  background:#fff;
+  border-radius:10px;
+  padding:10px 8px;
+  cursor:pointer;
+  font-family:inherit;
+  font-weight:800;
+  color:var(--text);
+}
+.ko-winner-btn:hover{border-color:var(--primary)}
+.ko-winner-btn.selected{
+  background:#c6f6d5;
+  border-color:#48A868;
+  color:#276749;
+}
+.ko-winner-btn.eliminated{
+  background:#fed7d7;
+  border-color:#feb2b2;
+  color:#9b2c2c;
+}
+.ko-clear-btn{
+  background:#fff;
+  border:1px solid var(--border);
+  color:var(--muted);
+  border-radius:8px;
+  padding:5px 10px;
+  cursor:pointer;
+  font-family:inherit;
+  font-size:.82em;
+}
+
 </style>
 <style>
 :root{--primary:#1565C0;--pd:#0D47A1;--sec:#B71C1C;--acc:#FFD600;--bg:#F0F4FF;--card:#fff;--text:#1A237E;--muted:#6272A4;--border:#C5CAE9;--green:#2E7D32;--red:#C62828;--shadow:0 2px 12px rgba(21,101,192,.1)}
@@ -303,7 +361,14 @@ input:focus,select:focus{outline:none;border-color:var(--primary);box-shadow:0 0
         </div>
         <button class="btn btn-p" style="margin-top:12px;width:100%" onclick="saveBonusAnswers()">💾 שמור תשובות בונוס</button>
       </div>
-      <div class="card"><h2>🏆 שלבי נוקאאוט</h2><div id="ko-form"></div></div>
+      <div class="card" style="margin-bottom:14px">
+        <h2>⚔️ סימון מנצחות נוקאאוט</h2>
+        <p style="font-size:.85em;color:var(--muted);margin-bottom:12px">
+          סמן בכל משחק מי ניצחה. המנצחת תיכנס אוטומטית לשלב הבא, והמפסידה תסומן באדום בטבלאות ההשוואה ובחישוב הניקוד הפוטנציאלי.
+        </p>
+        <div id="ko-match-winners"></div>
+      </div>
+      <div class="card"><h2>🏆 שלבי נוקאאוט — רשימות ידניות</h2><div id="ko-form"></div></div>
     </div>
     <div id="atab-parts" style="display:none">
       <div class="card">
@@ -490,6 +555,32 @@ const KO_STAGES = [
   {key:'endtype',label:'סיום הגמר (90/הארכה/פנדלים)', count:1,pts:2},
 ];
 
+
+const KO_MATCHES = {
+  r32: [
+    {id:'r32_1',  next:'r16', a:'Canada',       b:'South Africa'},
+    {id:'r32_2',  next:'r16', a:'Netherlands',  b:'Morocco'},
+    {id:'r32_3',  next:'r16', a:'Germany',      b:'Paraguay'},
+    {id:'r32_4',  next:'r16', a:'France',       b:'Sweden'},
+    {id:'r32_5',  next:'r16', a:'Switzerland',  b:'Algeria'},
+    {id:'r32_6',  next:'r16', a:'Colombia',     b:'Ghana'},
+    {id:'r32_7',  next:'r16', a:'Australia',    b:'Egypt'},
+    {id:'r32_8',  next:'r16', a:'Argentina',    b:'Cape Verde'},
+    {id:'r32_9',  next:'r16', a:'Brazil',       b:'Japan'},
+    {id:'r32_10', next:'r16', a:'Ivory Coast',  b:'Norway'},
+    {id:'r32_11', next:'r16', a:'Mexico',       b:'Ecuador'},
+    {id:'r32_12', next:'r16', a:'England',      b:'DR Congo'},
+    {id:'r32_13', next:'r16', a:'Belgium',      b:'Senegal'},
+    {id:'r32_14', next:'r16', a:'USA',          b:'Bosnia'},
+    {id:'r32_15', next:'r16', a:'Spain',        b:'Austria'},
+    {id:'r32_16', next:'r16', a:'Portugal',     b:'Croatia'}
+  ],
+  r16:  [],
+  qf:   [],
+  sf:   [],
+  final:[]
+};
+
 const FLAG_CODES = {
   'Mexico':'mx','South Africa':'za','Canada':'ca','Bosnia':'ba',
   'Paraguay':'py','USA':'us','Brazil':'br','Haiti':'ht',
@@ -583,7 +674,7 @@ function buildBaseParts(){
 }
 
 function loadState(){
-  let s={results:{},koRes:{},lastUpdated:null,matchFacts:{},groupTables:null};
+  let s={results:{},koRes:{},koMatchWinners:{},koEliminated:[],lastUpdated:null,matchFacts:{},groupTables:null};
   try{const d=localStorage.getItem('wc2026d');if(d)Object.assign(s,JSON.parse(d));}catch(e){}
   try{const mf=localStorage.getItem('wc2026mf');if(mf)s.matchFacts=JSON.parse(mf);}catch(e){}
   let parts=[...BASE_PARTS];
@@ -593,7 +684,7 @@ function loadState(){
 }
 
 function saveState(){
-  const d={results:STATE.results||{},koRes:STATE.koRes||{},groupTables:STATE.groupTables||defaultGroupTables(),lastUpdated:new Date().toISOString()};
+  const d={results:STATE.results||{},koRes:STATE.koRes||{},koMatchWinners:STATE.koMatchWinners||{},koEliminated:STATE.koEliminated||[],groupTables:STATE.groupTables||defaultGroupTables(),lastUpdated:new Date().toISOString()};
   localStorage.setItem('wc2026d',JSON.stringify(d));
   localStorage.setItem('wc2026p',JSON.stringify(STATE.parts));
   // שמור ל-Firebase
@@ -601,6 +692,8 @@ function saveState(){
     db.ref('state').set({
       results:STATE.results||{},
       koRes:STATE.koRes||{},
+      koMatchWinners:STATE.koMatchWinners||{},
+      koEliminated:STATE.koEliminated||[],
       groupTables:STATE.groupTables||defaultGroupTables(),
       parts:STATE.parts,
       lastUpdated:new Date().toISOString()
@@ -617,6 +710,8 @@ function loadFromFirebase(){
     if(!data) return;
     if(data.results) STATE.results=data.results;
     if(data.koRes) STATE.koRes=data.koRes;
+    if(data.koMatchWinners) STATE.koMatchWinners=data.koMatchWinners;
+    if(data.koEliminated) STATE.koEliminated=data.koEliminated;
     if(data.groupTables && !areGroupTablesEmpty(data.groupTables)) STATE.groupTables=data.groupTables;
     else STATE.groupTables=defaultGroupTables();
     if(data.parts && data.parts.length>0){
@@ -626,8 +721,9 @@ function loadFromFirebase(){
       });
     }
     // שמור ל-localStorage גם
-    localStorage.setItem('wc2026d',JSON.stringify({results:STATE.results,koRes:STATE.koRes,groupTables:STATE.groupTables}));
+    localStorage.setItem('wc2026d',JSON.stringify({results:STATE.results,koRes:STATE.koRes,koMatchWinners:STATE.koMatchWinners||{},koEliminated:STATE.koEliminated||[],groupTables:STATE.groupTables}));
     localStorage.setItem('wc2026p',JSON.stringify(STATE.parts));
+    rebuildKOFromMatchWinners();
     renderAll();
   }).catch(e=>console.warn('Firebase load error:',e));
 
@@ -637,6 +733,8 @@ function loadFromFirebase(){
     if(!data) return;
     if(data.results) STATE.results=data.results;
     if(data.koRes) STATE.koRes=data.koRes;
+    if(data.koMatchWinners) STATE.koMatchWinners=data.koMatchWinners;
+    if(data.koEliminated) STATE.koEliminated=data.koEliminated;
     if(data.groupTables && !areGroupTablesEmpty(data.groupTables)) STATE.groupTables=data.groupTables;
     else STATE.groupTables=defaultGroupTables();
     if(data.parts && data.parts.length>0){
@@ -645,6 +743,7 @@ function loadFromFirebase(){
         return f?{...p,...f}:p;
       });
     }
+    rebuildKOFromMatchWinners();
     renderAll();
   });
 }
@@ -716,11 +815,51 @@ function isTeamEliminatedAfterGroups(team){
   return r32.length >= 32 && team && !r32.includes(team);
 }
 
+function isTeamEliminated(team){
+  if(!team) return false;
+  if(isTeamEliminatedAfterGroups(team)) return true;
+  const elim = Array.isArray(STATE.koEliminated) ? STATE.koEliminated : [];
+  return elim.includes(team);
+}
+
+function rebuildKOFromMatchWinners(){
+  if(!STATE.koMatchWinners) STATE.koMatchWinners={};
+  const winners = STATE.koMatchWinners || {};
+  const eliminated = new Set();
+
+  Object.entries(KO_MATCHES).forEach(([round,matches])=>{
+    const nextKey = matches[0]?.next;
+    if(!nextKey) return;
+    const nextWinners = [];
+    matches.forEach(m=>{
+      const w = winners[m.id];
+      if(w===m.a || w===m.b){
+        nextWinners.push(w);
+        eliminated.add(w===m.a ? m.b : m.a);
+      }
+    });
+    if(nextWinners.length){
+      STATE.koRes[nextKey] = nextWinners;
+    }
+  });
+
+  STATE.koEliminated = [...eliminated];
+}
+
+function setKOMatchWinner(matchId,winner){
+  if(!STATE.koMatchWinners) STATE.koMatchWinners={};
+  if(winner) STATE.koMatchWinners[matchId]=winner;
+  else delete STATE.koMatchWinners[matchId];
+  rebuildKOFromMatchWinners();
+  saveState();
+}
+
+
 function koTeamStatusClass(team,key){
   if(!team) return '';
   const realArr = Array.isArray(STATE.koRes?.[key]) ? STATE.koRes[key] : [];
   if(realArr.includes(team)) return 'hit';
-  if(key !== 'r32' && isTeamEliminatedAfterGroups(team)) return 'miss';
+  if(key !== 'r32' && isTeamEliminated(team)) return 'miss';
   const expected = (KO_STAGES.find(s=>s.key===key)||{}).count || 0;
   if(realArr.length >= expected && expected > 0) return 'miss';
   return '';
@@ -762,8 +901,8 @@ function calcMaxPossible(p){
     const realSet = new Set(realArr);
 
     const predArr = (key === 'r32' || !hasClosedR32)
-      ? predArrRaw
-      : predArrRaw.filter(t => realR32Set.has(t));
+      ? predArrRaw.filter(t => !isTeamEliminated(t))
+      : predArrRaw.filter(t => realR32Set.has(t) && !isTeamEliminated(t));
 
     const alreadyHit = predArr.filter(t => realSet.has(t)).length;
     remaining += Math.max(0, predArr.length - alreadyHit) * stage.pts;
@@ -1764,7 +1903,7 @@ function adminLogin(){
       adminOn=true;
       document.getElementById('admin-panel').style.display='block';
       document.getElementById('admin-login').style.display='none';
-      renderAdminRes();renderKOForm();renderPartsList();
+      renderAdminRes();renderKOMatchWinners();renderKOForm();renderPartsList();
     })
     .catch(()=>{
       document.getElementById('admin-err').textContent='מייל או סיסמה שגויים';
@@ -1774,7 +1913,7 @@ function adminLogin(){
 function showAdminTab(tab){
   ['res','ko','parts','xl','wa','stats','sync'].forEach(t=>{const el=document.getElementById(`atab-${t}`);if(el)el.style.display=t===tab?'block':'none';});
   document.querySelectorAll('.itab').forEach((b,i)=>b.classList.toggle('active',['res','ko','parts','xl','wa','stats','sync'][i]===tab));
-  if(tab==='ko'){loadBonusToForm();renderKOForm();}
+  if(tab==='ko'){loadBonusToForm();renderKOMatchWinners();renderKOForm();}
   if(tab==='parts') renderPartsList();
   if(tab==='xl') populateXlSelect();
   if(tab==='wa') renderWAPage();
@@ -1824,6 +1963,37 @@ function saveBonusAnswers(){
   ['b1','b2','b3','b4'].forEach(k=>{const v=document.getElementById(`${k}ans`)?.value?.trim();if(v)STATE.koRes[`bonus_${k}`]=[v];});
   saveState();toast('✓ בונוס נשמר');
 }
+
+
+function renderKOMatchWinners(){
+  const box=document.getElementById('ko-match-winners');
+  if(!box) return;
+  if(!STATE.koMatchWinners) STATE.koMatchWinners={};
+
+  let html='';
+  Object.entries(KO_MATCHES).forEach(([round,matches])=>{
+    if(!matches || !matches.length) return;
+    const stage = KO_STAGES.find(s=>s.key===round);
+    html += `<h3 style="color:var(--primary);margin:12px 0 8px">${stage?stage.label:round}</h3>`;
+    html += `<div class="ko-match-admin">`;
+    matches.forEach((m,idx)=>{
+      const w=STATE.koMatchWinners?.[m.id] || '';
+      html += `<div class="ko-match-card">
+        <div class="ko-match-title">
+          <span>משחק ${idx+1}: ${teamFlag(m.a,18)} ${m.a} מול ${teamFlag(m.b,18)} ${m.b}</span>
+          <button class="ko-clear-btn" onclick="setKOMatchWinner('${m.id}','')">נקה</button>
+        </div>
+        <div class="ko-winner-buttons">
+          <button class="ko-winner-btn ${w===m.a?'selected':w===m.b?'eliminated':''}" onclick="setKOMatchWinner('${m.id}','${m.a.replace(/'/g,"\\'")}')">${w===m.a?'✓ ':''}${teamFlag(m.a,18)} ${m.a}</button>
+          <button class="ko-winner-btn ${w===m.b?'selected':w===m.a?'eliminated':''}" onclick="setKOMatchWinner('${m.id}','${m.b.replace(/'/g,"\\'")}')">${w===m.b?'✓ ':''}${teamFlag(m.b,18)} ${m.b}</button>
+        </div>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+  box.innerHTML=html;
+}
+
 
 function renderKOForm(){
   const div=document.getElementById('ko-form');
@@ -1918,7 +2088,7 @@ function setPosFromEl(el){
   if(p==='3'&&!g['3']&&countThirds()>=8){toast('⚠ מקסימום 8 מקום שלישי');return;}
   if(g[p]===t) delete g[p];
   else{['1','2','3'].forEach(x=>{if(g[x]===t)delete g[x];});g[p]=t;}
-  renderKOForm();
+  renderKOMatchWinners();renderKOForm();
 }
 
 function toggleStagePickEl(el){
@@ -1931,7 +2101,7 @@ function toggleStagePickEl(el){
   const idx=arr.indexOf(t);
   if(idx===-1){if(arr.length>=maxN){toast(`⚠ מקסימום ${maxN}`);return;}arr.push(t);}
   else arr.splice(idx,1);
-  renderKOForm();
+  renderKOMatchWinners();renderKOForm();
 }
 
 function saveGroupStage(){
@@ -1940,14 +2110,14 @@ function saveGroupStage(){
   ['1','2','3'].forEach(pos=>Object.entries(GROUPS).forEach(([l])=>{const t=(gp[l]||{})[pos];if(t&&!r32.includes(t))r32.push(t);}));
   if(!STATE.koRes) STATE.koRes={};
   STATE.koRes.r32=r32;
-  saveState();toast(`✓ נשמרו ${r32.length} נבחרות לשלב 32`);renderKOForm();
+  saveState();toast(`✓ נשמרו ${r32.length} נבחרות לשלב 32`);renderKOMatchWinners();renderKOForm();
 }
 
 function saveStagePicks(key){
   const teams=STATE.koRes?.stagePicks?.[key]||[];
   if(!STATE.koRes) STATE.koRes={};
   STATE.koRes[key]=[...teams];
-  saveState();toast(`✓ נשמרו ${teams.length} נבחרות`);renderKOForm();
+  saveState();toast(`✓ נשמרו ${teams.length} נבחרות`);renderKOMatchWinners();renderKOForm();
 }
 
 function setEndtype(v){
@@ -2910,7 +3080,7 @@ function renderAll(){
   if(document.getElementById('page-matches').classList.contains('active')) renderMatches();
   if(document.getElementById('page-compare').classList.contains('active')){renderCompare();renderKOCompare();}
   if(document.getElementById('page-groups')?.classList.contains('active')) renderGroupTables();
-  if(adminOn){renderAdminRes();renderKOForm();renderPartsList();}
+  if(adminOn){renderAdminRes();renderKOMatchWinners();renderKOForm();renderPartsList();}
 }
 
 // ============================================================
@@ -3109,7 +3279,7 @@ function importData(input){
         }
         return {...p,...imp, ko:mergedKo};
       });
-      localStorage.setItem('wc2026d',JSON.stringify({results:STATE.results,koRes:STATE.koRes,groupTables:STATE.groupTables}));
+      localStorage.setItem('wc2026d',JSON.stringify({results:STATE.results,koRes:STATE.koRes,koMatchWinners:STATE.koMatchWinners||{},koEliminated:STATE.koEliminated||[],groupTables:STATE.groupTables}));
       localStorage.setItem('wc2026p',JSON.stringify(STATE.parts));
       // שמור ל-Firebase
       try{
