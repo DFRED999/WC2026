@@ -364,7 +364,7 @@ input:focus,select:focus{outline:none;border-color:var(--primary);box-shadow:0 0
       <div class="card" style="margin-bottom:14px">
         <h2>⚔️ סימון מנצחות נוקאאוט</h2>
         <p style="font-size:.85em;color:var(--muted);margin-bottom:12px">
-          סמן בכל משחק מי ניצחה. המנצחת תיכנס אוטומטית לשלב הבא, והמפסידה תסומן באדום בטבלאות ההשוואה ובחישוב הניקוד הפוטנציאלי.
+          סמן בכל משחק מי ניצחה. המערכת תבנה אוטומטית את המשחקים בשלב הבא לפי המטריצה, תכניס את המנצחות לשלב הבא, תסמן מפסידות באדום ותעדכן את הניקוד הפוטנציאלי.
         </p>
         <div id="ko-match-winners"></div>
       </div>
@@ -556,7 +556,7 @@ const KO_STAGES = [
 ];
 
 
-const KO_MATCHES = {
+const KO_MATCHES_SEED = {
   r32: [
     {id:'r32_1',  next:'r16', a:'Canada',       b:'South Africa'},
     {id:'r32_2',  next:'r16', a:'Netherlands',  b:'Morocco'},
@@ -574,12 +574,16 @@ const KO_MATCHES = {
     {id:'r32_14', next:'r16', a:'USA',          b:'Bosnia'},
     {id:'r32_15', next:'r16', a:'Spain',        b:'Austria'},
     {id:'r32_16', next:'r16', a:'Portugal',     b:'Croatia'}
-  ],
-  r16:  [],
-  qf:   [],
-  sf:   [],
-  final:[]
+  ]
 };
+
+// בניית משחקי השלבים הבאים לפי המטריצה:
+// רבע גמר = מנצח משחק 1 מול מנצח משחק 2, וכן הלאה.
+// חצי גמר = מנצח רבע 1 מול מנצח רבע 2, וכן הלאה.
+// גמר = מנצח חצי 1 מול מנצח חצי 2.
+const KO_NEXT = {r32:'r16', r16:'qf', qf:'sf', sf:'final', final:'champ'};
+const KO_STAGE_ORDER = ['r32','r16','qf','sf','final'];
+
 
 const FLAG_CODES = {
   'Mexico':'mx','South Africa':'za','Canada':'ca','Bosnia':'ba',
@@ -822,15 +826,56 @@ function isTeamEliminated(team){
   return elim.includes(team);
 }
 
+function normalizeWinnerMatchId(round,idx){
+  return `${round}_${idx+1}`;
+}
+
+function getKOMatchesForRound(round){
+  if(round==='r32') return KO_MATCHES_SEED.r32;
+
+  const prevRound = {r16:'r32', qf:'r16', sf:'qf', final:'sf'}[round];
+  const prevWinners = Array.isArray(STATE.koRes?.[round]) ? STATE.koRes[round] : [];
+  const next = KO_NEXT[round];
+
+  const matches = [];
+  for(let i=0;i<prevWinners.length;i+=2){
+    const a = prevWinners[i];
+    const b = prevWinners[i+1];
+    if(a && b){
+      matches.push({id:normalizeWinnerMatchId(round, matches.length), next, a, b});
+    }
+  }
+  return matches;
+}
+
+function getAllKOMatches(){
+  return {
+    r32: getKOMatchesForRound('r32'),
+    r16: getKOMatchesForRound('r16'),
+    qf: getKOMatchesForRound('qf'),
+    sf: getKOMatchesForRound('sf'),
+    final: getKOMatchesForRound('final')
+  };
+}
+
 function rebuildKOFromMatchWinners(){
   if(!STATE.koMatchWinners) STATE.koMatchWinners={};
+  if(!STATE.koRes) STATE.koRes={};
+
   const winners = STATE.koMatchWinners || {};
   const eliminated = new Set();
 
-  Object.entries(KO_MATCHES).forEach(([round,matches])=>{
-    const nextKey = matches[0]?.next;
-    if(!nextKey) return;
+  // לא מוחקים r32 — זו רשימת העולות מהבתים.
+  // כן בונים מחדש r16/qf/sf/final/champ לפי סימון המנצחות.
+  ['r16','qf','sf','final','champ'].forEach(k=>{
+    if(Array.isArray(STATE.koRes?.[k])) delete STATE.koRes[k];
+  });
+
+  KO_STAGE_ORDER.forEach(round=>{
+    const matches = getKOMatchesForRound(round);
+    const nextKey = KO_NEXT[round];
     const nextWinners = [];
+
     matches.forEach(m=>{
       const w = winners[m.id];
       if(w===m.a || w===m.b){
@@ -838,6 +883,7 @@ function rebuildKOFromMatchWinners(){
         eliminated.add(w===m.a ? m.b : m.a);
       }
     });
+
     if(nextWinners.length){
       STATE.koRes[nextKey] = nextWinners;
     }
@@ -846,14 +892,30 @@ function rebuildKOFromMatchWinners(){
   STATE.koEliminated = [...eliminated];
 }
 
+function clearFutureKOWinnersFrom(round){
+  const order = ['r32','r16','qf','sf','final'];
+  const idx = order.indexOf(round);
+  if(idx < 0 || !STATE.koMatchWinners) return;
+  order.slice(idx+1).forEach(r=>{
+    Object.keys(STATE.koMatchWinners).forEach(id=>{
+      if(id.startsWith(r+'_')) delete STATE.koMatchWinners[id];
+    });
+  });
+}
+
 function setKOMatchWinner(matchId,winner){
   if(!STATE.koMatchWinners) STATE.koMatchWinners={};
+  const round = String(matchId).split('_')[0];
+
   if(winner) STATE.koMatchWinners[matchId]=winner;
   else delete STATE.koMatchWinners[matchId];
+
+  // אם משנים תוצאה בשלב מוקדם, מנקים בחירות בשלבים הבאים כדי למנוע סתירות במטריצה.
+  clearFutureKOWinnersFrom(round);
+
   rebuildKOFromMatchWinners();
   saveState();
 }
-
 
 function koTeamStatusClass(team,key){
   if(!team) return '';
@@ -1970,11 +2032,28 @@ function renderKOMatchWinners(){
   if(!box) return;
   if(!STATE.koMatchWinners) STATE.koMatchWinners={};
 
+  rebuildKOFromMatchWinners();
+
+  const rounds = ['r32','r16','qf','sf','final'];
   let html='';
-  Object.entries(KO_MATCHES).forEach(([round,matches])=>{
-    if(!matches || !matches.length) return;
+
+  rounds.forEach(round=>{
+    const matches = getKOMatchesForRound(round);
     const stage = KO_STAGES.find(s=>s.key===round);
-    html += `<h3 style="color:var(--primary);margin:12px 0 8px">${stage?stage.label:round}</h3>`;
+    const nextStage = KO_STAGES.find(s=>s.key===KO_NEXT[round]);
+
+    html += `<div style="margin:16px 0 8px;padding:10px 12px;border-radius:10px;background:#EEF2FF;border:1px solid var(--border)">
+      <div style="font-weight:900;color:var(--primary)">${stage?stage.label:round}</div>
+      <div style="font-size:.82em;color:var(--muted);margin-top:3px">המנצחות עוברות ל־${nextStage?nextStage.label:KO_NEXT[round]}</div>
+    </div>`;
+
+    if(!matches.length){
+      html += `<div style="padding:12px;border:1px dashed var(--border);border-radius:10px;color:var(--muted);font-size:.86em;margin-bottom:10px">
+        עדיין אין מספיק מנצחות מהשלב הקודם כדי לבנות את המשחקים בשלב הזה.
+      </div>`;
+      return;
+    }
+
     html += `<div class="ko-match-admin">`;
     matches.forEach((m,idx)=>{
       const w=STATE.koMatchWinners?.[m.id] || '';
@@ -1991,9 +2070,9 @@ function renderKOMatchWinners(){
     });
     html += `</div>`;
   });
+
   box.innerHTML=html;
 }
-
 
 function renderKOForm(){
   const div=document.getElementById('ko-form');
